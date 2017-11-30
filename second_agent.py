@@ -22,6 +22,8 @@ from pysc2.agents import base_agent
 from pysc2.lib import actions
 from pysc2.lib import features
 
+
+
 import time
 
 _PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
@@ -45,16 +47,35 @@ class MoveToBeacon(base_agent.BaseAgent):
         self.obs = None
 
     def get_observation(self, args):
-        '''Return a json-ed observation'''
-        return {"three":3}
+        '''Return a dictionary of observations'''
+        player_relative = self.obs.observation["screen"][_PLAYER_RELATIVE]
+        neutral_x, neutral_y = (player_relative == _PLAYER_NEUTRAL).nonzero()
+        enemy_x, enemy_y = (player_relative == _PLAYER_HOSTILE).nonzero()
+        player_x, player_y = (player_relative == _PLAYER_FRIENDLY).nonzero()
+
+        if neutral_y.any():
+            #print(neutral_y, len(neutral_y), min(neutral_y), max(neutral_y))
+            r_dict = {}
+            somekeys = ["neutral_y", "neutral_x", "enemy_y", "enemy_x", "player_y", "player_x"]
+            for key in somekeys:
+                try:
+                    r_dict[key] = eval("int(" + key + ".mean())")
+                except ValueError:
+                    r_dict[key] = "NaN"
+
+
+            #r_dict = {"neutral_y":int(neutral_y.mean()),"neutral_x":int(neutral_x.mean()),"enemy_y":int(enemy_y.mean()),"enemy_x":int(enemy_x.mean()),
+             #         "player_y":int(player_y.mean()),"player_x":int(player_x.mean())}
+        return r_dict
 
     def step(self, obs):
         self.tickable = False
+        self.obs = obs
         while not self.tickable:
             #print("tickable", self.tickable)
             pass
 
-        self.obs = obs
+
 
         #self.tick = False
         #stopwatch.sw.clear()
@@ -63,20 +84,20 @@ class MoveToBeacon(base_agent.BaseAgent):
         #put the ACT-R loop here
         #while not self.tick:
         #    print("nothing...")
+        #time.sleep(2)
 
-
-
-        if _MOVE_SCREEN in obs.observation["available_actions"]:
-            player_relative = obs.observation["screen"][_PLAYER_RELATIVE]
-            neutral_y, neutral_x = (player_relative == _PLAYER_NEUTRAL).nonzero()
-            if not neutral_y.any():
-
-                return actions.FunctionCall(_NO_OP, [])
-            target = [int(neutral_x.mean()), int(neutral_y.mean())]
-
-            return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, target])
-        else:
-
-            return actions.FunctionCall(_SELECT_ARMY, [_SELECT_ALL])
+        return actions.FunctionCall(_NO_OP, [])
+        # if _MOVE_SCREEN in obs.observation["available_actions"]:
+        #     player_relative = obs.observation["screen"][_PLAYER_RELATIVE]
+        #     neutral_y, neutral_x = (player_relative == _PLAYER_NEUTRAL).nonzero()
+        #     if not neutral_y.any():
+        #
+        #         return actions.FunctionCall(_NO_OP, [])
+        #     target = [int(neutral_x.mean()), int(neutral_y.mean())]
+        #
+        #     return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, target])
+        # else:
+        #
+        #     return actions.FunctionCall(_SELECT_ARMY, [_SELECT_ALL])
 
 

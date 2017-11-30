@@ -1,4 +1,5 @@
-;;; Version Notes:
+;;; Version Notes: renamed to starcraft from starcrat
+;;; A1rev3: Added a second production that /should/ repond to imaginal bufferings.  It doesn't fire yet.
 ;;; A1rev2: Modified to receive a response
 ;;; - reduced the number of cycles to 1000
 ;;; A1rev1: just a loop model. Does not receive a response
@@ -100,24 +101,24 @@
        state      observe
    !eval! (setf *msg* (list (cons "get_observation" 32)))
 )
-;(P observe
-;   =goal>
-;       ISA        initialize
-;       state      observe
-;   =imaginal>
-;       neutral_y   =ny
-;       neutral_x   =nx
-;       enemy_y     =ey
-;       enemy_x     =ex
-;       player_y    =py
-;       player_x    =px
-;   ==>
-;   =goal>
-;       state       none
-;   =imaginal>
-;
-;   !eval! (format t ny)
-;)
+(P observe
+   =goal>
+       ISA        initialize
+       state      observe
+   =imaginal>
+       sneutral_y   =ny
+       sneutral_x   =nx
+       senemy_y     =ey
+       senemy_x     =ex
+       splayer_y    =py
+       splayer_x    =px
+   ==>
+   =goal>
+       state       none
+   =imaginal>
+
+   !eval! (format t =ny)
+)
 
 
 
@@ -148,7 +149,7 @@ integer is itself a JSON value."
         (let ((stream (usocket:socket-stream
                        (setf socket (usocket:socket-connect "127.0.0.1" 33333 :timeout 100)))))
           (loop for x from 1 to 1000
-            do (run 0.05)
+            do (run 0.1)
             do (setf  *tic* (list (cons "command" "tic")))
             ;;do (format t "here-1")
             do (vh:write-json *tic* stream)

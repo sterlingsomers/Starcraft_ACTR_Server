@@ -52,6 +52,7 @@ class MasterServerProtocol(LineReceiver):
                 self.factory.agent.tickable = True
         if 'get_observation' in jLine:
             r_dict = self.factory.agent.get_observation(None)
+            print( "sending", bytes(json.dumps(r_dict), 'UTF-8'))
             self.sendLine(bytes(json.dumps(r_dict), 'UTF-8'))
             self.sendLine(bytes(json.dumps({}), 'UTF-8')) #neded on the lisp side to flush...
             #print("r_dict", r_dict)
