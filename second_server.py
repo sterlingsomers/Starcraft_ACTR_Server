@@ -67,7 +67,7 @@ server_agent = second_agent.MoveToBeacon()
 def game_thread(*args):
     FLAGS(args)
     with sc2_env.SC2Env(
-        map_name="MoveToBeaconAvoidBaneling",
+        map_name="MoveToBeacon",
         #map_name="MoveToBeacon",
         step_mul=step_mul,
         game_steps_per_episode=steps * step_mul,

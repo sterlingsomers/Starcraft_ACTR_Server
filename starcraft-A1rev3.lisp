@@ -101,6 +101,17 @@
        state      observe
    !eval! (setf *msg* (list (cons "get_observation" 32)))
 )
+
+(P observe
+   =goal>
+       ISA        initialize
+       state      observe
+   =imaginal>
+      -sneutral_y   =ny
+   ==>
+   =goal>
+)
+
 (P observe
    =goal>
        ISA        initialize
@@ -148,8 +159,8 @@ integer is itself a JSON value."
     (unwind-protect
         (let ((stream (usocket:socket-stream
                        (setf socket (usocket:socket-connect "127.0.0.1" 33333 :timeout 100)))))
-          (loop for x from 1 to 1000
-            do (run 0.1)
+          (loop for x from 1 to 3
+            do (run 0.05)
             do (setf  *tic* (list (cons "command" "tic")))
             ;;do (format t "here-1")
             do (vh:write-json *tic* stream)
