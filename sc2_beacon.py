@@ -10,7 +10,7 @@ from pysc2.env import sc2_env
 
 import actr
 
-actr.load_act_r_model("/Users/paulsomers/StarcraftMAC/MyAgents/starcraft-A1rev3c.lisp")
+actr.load_act_r_model("/Users/paulsomers/StarcraftMAC/MyAgents/starcraft-B1-rev2.lisp")
 
 #game setup
 FLAGS = flags.FLAGS
