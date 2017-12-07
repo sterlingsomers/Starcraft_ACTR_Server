@@ -59,32 +59,10 @@ class MoveToBeacon(base_agent.BaseAgent):
         return 0
 
     def do_tic(self):
-        #print("do_tic: tic called")
+        print("do_tic: tic called")
         #print("do_tic: waiting for the stepper to start")
-        while not self.stepper_started:
-            pass
-        #print("do_tic: stepper has started")
-        #once it's started, it can stop waiting
-        while self.stepper_waiting is None:
-            pass
-        self.stepper_waiting = False
-        #print("do_tic: stepper_waiting set to False")
-        #the stepper will then do a commmand (that it ought to receive from ACTR)
-
-
-        #self.tickable=True
-        #print("TICKABLE set to TRUE")
-
-        #wait for it to finish stepping
-        #print("do_tic: waiting for stepper to step")
-        while not self.stepped:
-        #    print ("stepped", self.stepped)
-            pass
-        self.stepped = False
-        #print("do_tic: stepped set to FALSE")
-
-        self.stepper_started = False
-        self.stepper_waiting = None
+        self.actr.schedule_simple_event_now("ignore")
+        self.tickable = True
 
         return 1
 
@@ -97,7 +75,7 @@ class MoveToBeacon(base_agent.BaseAgent):
 
         if neutral_y.any():
             # print(neutral_y, len(neutral_y), min(neutral_y), max(neutral_y))
-            chk = self.actr.define_chunks(['neutral_x', neutral_x.mean(), 'neutral_y', neutral_y.mean()])
+            chk = self.actr.define_chunks(['neutral_x', neutral_x.mean(), 'neutral_y', neutral_y.mean(),'wait', 'false'])
             self.actrChunks.append(chk)
 
             #self.actr.schedule_simple_event_now("ignore")
@@ -105,41 +83,25 @@ class MoveToBeacon(base_agent.BaseAgent):
             self.actr.schedule_simple_event_now("set-buffer-chunk", ['imaginal', chk[0]])#self.actr.set_buffer_chunk('imaginal',chk[0])
             #self.actr.schedule_simple_event_now("ignore")
 
-
+        return 1
 
                     # r_dict = {"neutral_y":int(neutral_y.mean()),"neutral_x":int(neutral_x.mean()),"enemy_y":int(enemy_y.mean()),"enemy_x":int(enemy_x.mean()),
                     #         "player_y":int(player_y.mean()),"player_x":int(player_x.mean())}
         #return r_dict
 
     def step(self, obs):
-        #print("step: step called")
-        self.stepper_started = True
+        print("step: step called")
+        #self.stepper_started = True
         #print("step: set stepper_started to True")
         self.obs = obs
-        self.push_observation(None)
-
-
-        self.stepper_waiting = True
-        #print("step: set stepper_waiting to True")
-        #print("step: and step is waiting")
-        while self.stepper_waiting:
-            pass
-        #print("step: step has finished waiting")
-        #self.tickable = False
-        #self.obs = obs
-        #self.push_observation(None)
-        #while not self.tickable:
-            #print("tickable-b", self.tickable)
-        #    pass
-
-        # self.tick = False
-        # stopwatch.sw.clear()
-        # stopwatch.sw.enabled = True
-        super(MoveToBeacon, self).step(obs)
-        # put the ACT-R loop here
-        # while not self.tick:
-        #    print("nothing...")
-        # time.sleep(2)
+        w = self.push_observation(None)
+        current_imaginal_chunk = self.actr.buffer_chunk('imaginal')
+        #print(current_imaginal_chunk)
+        self.actr.mod_chunk(current_imaginal_chunk[0], "wait", "false")
+        #self.actr.schedule_simple_event_now("mod-chunk-fct", 'imaginal', 'wait', 'false')
+        while not self.tickable:
+            time.sleep(0.00001)
+            #pass
 
         #return actions.FunctionCall(_NO_OP, [])
         if _MOVE_SCREEN in obs.observation["available_actions"]:
@@ -148,14 +110,17 @@ class MoveToBeacon(base_agent.BaseAgent):
             if not neutral_y.any():
 
                 self.stepped = True
+                self.tickable = False
                 #print("step: set STEPPED to TRUE")
                 return actions.FunctionCall(_NO_OP, [])
             target = [int(neutral_x.mean()), int(neutral_y.mean())]
             self.stepped = True
+            self.tickable = False
             #print("step: set STEPPED to TRUE")
             return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, target])
         else:
             self.stepped = True
+            self.tickable = False
             #print("step: set STEPPED to TRUE")
             return actions.FunctionCall(_SELECT_ARMY, [_SELECT_ALL])
 
