@@ -43,14 +43,16 @@ if __name__ == '__main__':
     thread = threading.Thread(target=game_thread, args=sys.argv)
     thread.start()
 
-    time.sleep(20)
+    time.sleep(25)
 
-    act_thread = threading.Thread(target=actr.run, args=[1000])
+
+    act_thread = threading.Thread(target=actr.run, args=[5000])
     act_thread.start()
     #for x in range(1000):
     #   actr.process_events()
 
     print(actr.mp_models())
     print("test")
+
 
 
