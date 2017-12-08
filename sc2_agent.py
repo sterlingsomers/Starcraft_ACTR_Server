@@ -61,6 +61,15 @@ class MoveToBeacon(base_agent.BaseAgent):
     def set_response(self,*args):
         print(args)
         args = list(args)
+
+        #Also part of the rest because the production has already been chosen.
+        #This will, of course, add some lag because it won't know to click on the agent
+        #Until after 1 cycle.
+        # if not _MOVE_SCREEN in self.obs.observation["available_actions"]:
+        #     self.response = [_NO_OP, []]
+        #     self.do_tic()
+        #     return 1
+
         if args[0] == "_SELECT_ARMY":
             self.response = [_SELECT_ARMY, [_SELECT_ALL]]
         elif args[0] == "_MOVE_SCREEN":
@@ -140,7 +149,13 @@ class MoveToBeacon(base_agent.BaseAgent):
 
     def step(self, obs):
         print("step: step called")
-        self.response = ["_NO_OP", "[]"]
+        self.response = [_NO_OP, []]
+
+        #this is a temporary solution for resetting...
+        if not _MOVE_SCREEN in obs.observation["available_actions"]:
+            current_goal_chunk = self.actr.buffer_chunk('goal')
+            self.actr.mod_chunk(current_goal_chunk[0], "state", "select-army")
+
         #self.stepper_started = True
         #print("step: set stepper_started to True")
         self.obs = obs
@@ -156,10 +171,14 @@ class MoveToBeacon(base_agent.BaseAgent):
         #return actions.FunctionCall(eval(self.response[0]),eval(self.response[1]))
         argone = self.response[0]#eval(self.response[0])
         argtwo = self.response[1]#eval(self.response[1])
-        if argone == _NO_OP:
-            self.stepped = True
-            self.tickable = False
-            return actions.FunctionCall(argone, [_SELECT_ALL])
+
+        #I don't think this if is needed anymore.
+        # if argone == _NO_OP:
+        #     self.stepped = True
+        #     self.tickable = False
+        #     return actions.FunctionCall(argone, [_SELECT_ALL])
+
+
         self.stepped = True
         self.tickable = False
         return actions.FunctionCall(argone,argtwo)

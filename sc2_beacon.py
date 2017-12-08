@@ -46,7 +46,7 @@ if __name__ == '__main__':
     time.sleep(25)
 
 
-    act_thread = threading.Thread(target=actr.run, args=[100])
+    act_thread = threading.Thread(target=actr.run, args=[300])
     act_thread.start()
     #for x in range(1000):
     #   actr.process_events()
