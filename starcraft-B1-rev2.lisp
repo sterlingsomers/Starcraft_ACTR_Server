@@ -109,7 +109,7 @@
     -  wait       true
    ==>
    =goal>
-       state      none
+;       state      none
    =imaginal>
        wait       true
    ;-imaginal>
