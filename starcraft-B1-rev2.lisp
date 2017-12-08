@@ -56,7 +56,7 @@
 
 (define-model sc2-model
 
-(sgp :esc t :lf .05 :v nil)
+(sgp :esc t :lf .05 :v t)
 ;;lat = 38.967163
 ;;lon = -104.81937
 ;;t_lat = 38.99343742021595
@@ -66,13 +66,13 @@
 
 
 (add-dm
- (goal ISA initialize state clear-mission)
+ (goal ISA initialize state select-army)
  (start-location ISA waypoint-location my_lat 38.967163 my_lon -104.81937 tar_lat 38.993437 tar_lon -105.055303 state 1))
 
 (P clear-mission
    =goal>
        ISA        initialize
-       state      clear-mission
+       state      select-army
    =imaginal>
      - wait       true
    ==>
@@ -80,9 +80,13 @@
        state      check-neutrals
    =imaginal>
        wait       true
-   !eval! ("tic")
+   
+   !eval! ("set_response" "_SELECT_ARMY" "[_SELECT_ALL]")
    ;!eval! (format t "msg")
 )
+
+
+
 (P wait
    =imaginal>
        wait       true
@@ -90,6 +94,10 @@
    =imaginal>
    
 )
+;;should the wait production tic as well?
+;;my initial thought is no because it 
+;;should be happening between tics
+
 
 (P check-neutrals
    =goal>
@@ -101,15 +109,16 @@
     -  wait       true
    ==>
    =goal>
-       state      clear-mission
+       state      none
    =imaginal>
        wait       true
    ;-imaginal>
 
-   !eval! ("tic")
+   !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" =nx =ny )
 )
 
 
+     
 
 (goal-focus goal)
 ) ; end define-model
