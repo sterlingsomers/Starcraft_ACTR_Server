@@ -47,6 +47,8 @@ class MoveToBeacon(base_agent.BaseAgent):
         self.stepped = False
         self.obs = None
         self.actrChunks = []
+        self.response = ["_NO_OP", "[]"]
+        print("SELECT:", _SELECT_ARMY)
         #self.actr.add_command("tic",self.do_tic)
 
     def actr_setup(self,actr):
@@ -54,6 +56,50 @@ class MoveToBeacon(base_agent.BaseAgent):
 
         self.actr.add_command("tic", self.do_tic)
         self.actr.add_command("ignore", self.ignore)
+        self.actr.add_command("set_response", self.set_response)
+
+    def set_response(self,*args):
+        print(args)
+        args = list(args)
+        if args[0] == "_SELECT_ARMY":
+            self.response = [_SELECT_ARMY, [_SELECT_ALL]]
+        elif args[0] == "_MOVE_SCREEN":
+            self.response = [_MOVE_SCREEN, [_NOT_QUEUED, [args[2][1],args[3][1]]]]
+        else:
+            pass
+
+        # self.response = []
+        # if len(args) <= 2:
+        #     self.response.append(eval(args[0]))
+        #     self.response.append(eval(args[1]))
+        # else:
+        #     self.response.append(eval(args[0]))
+        #     args.remove(args[0])
+        #     argument2 = []
+        #     for x in args:
+        #         if isinstance(x,list):
+        #             if isinstance(x, str):
+        #                 argument2.append(eval(x))
+        #             else:
+        #                 argument2.append(x[1])
+        #         else:
+        #             if isinstance(x, str):
+        #                 argument2.append(eval(x))
+        #             else:
+        #                 argument2.append(x)
+        #     self.response.append(argument2)
+        print("RES:", self.response)
+            # argument2 = [x for x in args]
+            # self.response.append(argument2)
+
+
+        #print("set_response: set_response called with response:", response, "arg:", arg)
+        #self.response = [response,arg]
+        self.do_tic()
+
+        return 1
+
+
 
     def ignore(self):
         return 0
@@ -69,13 +115,16 @@ class MoveToBeacon(base_agent.BaseAgent):
     def push_observation(self, args):
         '''Return a dictionary of observations'''
         player_relative = self.obs.observation["screen"][_PLAYER_RELATIVE]
-        neutral_x, neutral_y = (player_relative == _PLAYER_NEUTRAL).nonzero()
+        neutral_y, neutral_x = (player_relative == _PLAYER_NEUTRAL).nonzero()
         enemy_x, enemy_y = (player_relative == _PLAYER_HOSTILE).nonzero()
         player_x, player_y = (player_relative == _PLAYER_FRIENDLY).nonzero()
 
         if neutral_y.any():
             # print(neutral_y, len(neutral_y), min(neutral_y), max(neutral_y))
-            chk = self.actr.define_chunks(['neutral_x', neutral_x.mean(), 'neutral_y', neutral_y.mean(),'wait', 'false'])
+
+
+            chk = self.actr.define_chunks(['neutral_x', int(neutral_x.mean()), 'neutral_y', int(neutral_y.mean()),'wait', 'false'])
+            # the wait, false is for to make sure something other than the wait production fires.
             self.actrChunks.append(chk)
 
             #self.actr.schedule_simple_event_now("ignore")
@@ -91,6 +140,7 @@ class MoveToBeacon(base_agent.BaseAgent):
 
     def step(self, obs):
         print("step: step called")
+        self.response = ["_NO_OP", "[]"]
         #self.stepper_started = True
         #print("step: set stepper_started to True")
         self.obs = obs
@@ -102,27 +152,37 @@ class MoveToBeacon(base_agent.BaseAgent):
         while not self.tickable:
             time.sleep(0.00001)
             #pass
-
-        #return actions.FunctionCall(_NO_OP, [])
-        if _MOVE_SCREEN in obs.observation["available_actions"]:
-            player_relative = obs.observation["screen"][_PLAYER_RELATIVE]
-            neutral_y, neutral_x = (player_relative == _PLAYER_NEUTRAL).nonzero()
-            if not neutral_y.any():
-
-                self.stepped = True
-                self.tickable = False
-                #print("step: set STEPPED to TRUE")
-                return actions.FunctionCall(_NO_OP, [])
-            target = [int(neutral_x.mean()), int(neutral_y.mean())]
+        #print("step: about to", self.response)
+        #return actions.FunctionCall(eval(self.response[0]),eval(self.response[1]))
+        argone = self.response[0]#eval(self.response[0])
+        argtwo = self.response[1]#eval(self.response[1])
+        if argone == _NO_OP:
             self.stepped = True
             self.tickable = False
-            #print("step: set STEPPED to TRUE")
-            return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, target])
-        else:
-            self.stepped = True
-            self.tickable = False
-            #print("step: set STEPPED to TRUE")
-            return actions.FunctionCall(_SELECT_ARMY, [_SELECT_ALL])
+            return actions.FunctionCall(argone, [_SELECT_ALL])
+        self.stepped = True
+        self.tickable = False
+        return actions.FunctionCall(argone,argtwo)
+
+        # if _MOVE_SCREEN in obs.observation["available_actions"]:
+        #     player_relative = obs.observation["screen"][_PLAYER_RELATIVE]
+        #     neutral_y, neutral_x = (player_relative == _PLAYER_NEUTRAL).nonzero()
+        #     if not neutral_y.any():
+        #
+        #         self.stepped = True
+        #         self.tickable = False
+        #         #print("step: set STEPPED to TRUE")
+        #         return actions.FunctionCall(_NO_OP, [])
+        #     target = [int(neutral_x.mean()), int(neutral_y.mean())]
+        #     self.stepped = True
+        #     self.tickable = False
+        #     #print("step: set STEPPED to TRUE")
+        #     return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, target])
+        # else:
+        #     self.stepped = True
+        #     self.tickable = False
+        #     #print("step: set STEPPED to TRUE")
+        #     return actions.FunctionCall(_SELECT_ARMY, [_SELECT_ALL])
 
 
 
