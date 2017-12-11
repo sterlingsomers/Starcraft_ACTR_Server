@@ -92,6 +92,8 @@
        wait       true
    ==>
    =imaginal>
+
+   !eval! ("RHSWait")
    
 )
 ;;should the wait production tic as well?
