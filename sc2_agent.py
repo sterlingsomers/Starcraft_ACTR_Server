@@ -57,6 +57,7 @@ class MoveToBeacon(base_agent.BaseAgent):
         self.actr.add_command("tic", self.do_tic)
         self.actr.add_command("ignore", self.ignore)
         self.actr.add_command("set_response", self.set_response)
+        self.actr.add_command("RHSWait", self.RHSWait)
 
     def set_response(self,*args):
         print(args)
@@ -108,7 +109,11 @@ class MoveToBeacon(base_agent.BaseAgent):
 
         return 1
 
-
+    def RHSWait(self):
+        self.RHSWaitFlag = True
+        while self.RHSWaitFlag:
+            time.sleep(0.00001)
+        return 1
 
     def ignore(self):
         return 0
@@ -163,6 +168,7 @@ class MoveToBeacon(base_agent.BaseAgent):
         current_imaginal_chunk = self.actr.buffer_chunk('imaginal')
         #print(current_imaginal_chunk)
         self.actr.mod_chunk(current_imaginal_chunk[0], "wait", "false")
+        self.RHSWaitFlag = False
         #self.actr.schedule_simple_event_now("mod-chunk-fct", 'imaginal', 'wait', 'false')
         while not self.tickable:
             time.sleep(0.00001)
