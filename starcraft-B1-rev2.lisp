@@ -62,12 +62,10 @@
 ;;t_lat = 38.99343742021595
 ;;t_lon = -105.05530266366
 (chunk-type initialize state)
-(chunk-type initial-info my_lat my_lon tar_lat tar_lon state)
 
 
 (add-dm
- (goal ISA initialize state select-army)
- (start-location ISA waypoint-location my_lat 38.967163 my_lon -104.81937 tar_lat 38.993437 tar_lon -105.055303 state 1))
+ (goal ISA initialize state select-army))
 
 (P clear-mission
    =goal>
