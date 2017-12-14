@@ -113,10 +113,6 @@ def main():
 
     agent.build_model()
 
-    #start ACT-R? This won't work for multiples...
-    #act_thread = threading.Thread(target=actr.run, args=[300])
-    #act_thread.start()
-
 
     if os.path.exists(full_chekcpoint_path):
         agent.load(full_chekcpoint_path) #(MINE) LOAD!!!
