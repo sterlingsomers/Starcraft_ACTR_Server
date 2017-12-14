@@ -10,6 +10,25 @@ from common.preprocess import ObsProcesser, FEATURE_KEYS, AgentInputTuple
 from common.util import weighted_random_sample, select_from_each_row, ravel_index_pairs
 
 
+#TODO why doesn't it already import the features?
+from pysc2.lib import features
+
+import actr
+
+import time
+import threading
+
+_PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
+_PLAYER_FRIENDLY = 1
+_PLAYER_NEUTRAL = 3  # beacon/minerals
+_PLAYER_HOSTILE = 4
+_NO_OP = actions.FUNCTIONS.no_op.id
+_MOVE_SCREEN = actions.FUNCTIONS.Move_screen.id
+_ATTACK_SCREEN = actions.FUNCTIONS.Attack_screen.id
+_SELECT_ARMY = actions.FUNCTIONS.select_army.id
+_NOT_QUEUED = [0]
+_SELECT_ALL = [0]
+
 def _get_placeholders(spatial_dim):
     sd = spatial_dim
     feature_list = [
@@ -102,6 +121,27 @@ class ActorCriticAgent:
         self.clip_epsilon = clip_epsilon
         self.policy = policy
 
+        #load the ACT-R model
+        self.actr = actr
+        self.actr.load_act_r_model("/Users/paulsomers/StarcraftMAC/MyAgents/starcraft-B1-rev2.lisp")
+        self.actr.add_command("tic", self.do_tic)
+        self.actr.add_command("ignore", self.ignore)
+        self.actr.add_command("set_response", self.set_response)
+        self.actr.add_command("RHSWait", self.RHSWait)
+        self.actr.add_command("GameStartWait", self.game_start_wait)
+
+        #some act-r items
+        self.tickable = False
+        self.game_start_wait_flag = True
+        self.stepper_waiting = False
+        self.stepper_started = False
+        self.stepped = False
+        self.obs = None
+        self.actrChunks = []
+
+
+
+
         opt_class = tf.train.AdamOptimizer if optimiser == "adam" else tf.train.RMSPropOptimizer
         if optimiser_pars is None:
             pars = {
@@ -136,6 +176,77 @@ class ActorCriticAgent:
     def _scalar_summary(self, name, tensor):
         tf.summary.scalar(name, tensor,
             collections=[tf.GraphKeys.SUMMARIES, self._scalar_summary_key])
+
+    def RHSWait(self):
+        self.RHSWaitFlag = True
+        while self.RHSWaitFlag:
+            time.sleep(0.00001)
+        return 1
+
+    def ignore(self):
+        return 0
+
+    def game_start_wait(self):
+        print("GAME START WAIT")
+
+        while self.game_start_wait_flag:
+            time.sleep(0.00001)
+        print("Game START returned")
+        return 1
+
+    def do_tic(self):
+        print("do_tic: tic called")
+        #print("do_tic: waiting for the stepper to start")
+        self.actr.schedule_simple_event_now("ignore")
+        self.tickable = True
+
+        return 1
+
+    def push_observation(self, args):
+        '''Return a dictionary of observations'''
+        player_relative = self.obs["player_relative_screen"]
+        print("PR", (player_relative == _PLAYER_NEUTRAL).nonzero())
+
+
+        neutral_y, neutral_x = (player_relative == _PLAYER_NEUTRAL).nonzero()[1:3]
+        #enemy_x, enemy_y = (player_relative == _PLAYER_HOSTILE).nonzero()
+        #player_x, player_y = (player_relative == _PLAYER_FRIENDLY).nonzero()
+
+        if neutral_y.any():
+            # print(neutral_y, len(neutral_y), min(neutral_y), max(neutral_y))
+
+
+            chk = self.actr.define_chunks(['neutral_x', int(neutral_x.mean()), 'neutral_y', int(neutral_y.mean()),'wait', 'false'])
+            # the wait, false is for to make sure something other than the wait production fires.
+
+            #not sure I need the actrChunks list
+            #self.actrChunks.append(chk)
+
+            #self.actr.schedule_simple_event_now("ignore")
+            #self.actr.set_buffer_chunk('imaginal', chk[0])
+            self.actr.schedule_simple_event_now("set-buffer-chunk", ['imaginal', chk[0]])#self.actr.set_buffer_chunk('imaginal',chk[0])
+            #self.actr.schedule_simple_event_now("ignore")
+
+        return 1
+    def set_response(self,*args):
+        print(args)
+        args = list(args)
+
+
+
+        if args[0] == "_SELECT_ARMY":
+            self.response = [_SELECT_ARMY, [_SELECT_ALL]]
+        elif args[0] == "_MOVE_SCREEN":
+            self.response = [_MOVE_SCREEN, [_NOT_QUEUED, [args[2][1],args[3][1]]]]
+        else:
+            pass
+
+
+        print("RES:", self.response)
+
+        self.do_tic()
+
+        return 1
 
     def build_model(self):
         self.placeholders = _get_placeholders(self.spatial_dim)
@@ -248,6 +359,45 @@ class ActorCriticAgent:
 
     def step(self, obs):
         feed_dict = self._input_to_feed_dict(obs)
+
+        #start ACT-R (after the game has started)
+        if self.game_start_wait_flag:
+            chk = self.actr.define_chunks(
+                ['wait', 'false'])
+
+            self.actr.schedule_simple_event_now("set-buffer-chunk",
+                                                ['imaginal', chk[0]])  # self.actr.set_buffer_chunk('imaginal',chk[0])
+            actrThread = threading.Thread(target=self.actr.run, args=[300])
+            actrThread.start()
+            self.game_start_wait_flag = False
+
+        #for key in obs:
+        #    print("KEY", key)
+        #insert some ACTR things
+
+        print("here")
+        # this is a temporary solution for resetting...
+        if not _MOVE_SCREEN in obs["available_action_ids"]:
+            current_goal_chunk = self.actr.buffer_chunk('goal')
+            self.actr.mod_chunk(current_goal_chunk[0], "state", "select-army")
+
+        print("here2")
+        self.obs = obs
+        w = self.push_observation(None)
+        current_imaginal_chunk = self.actr.buffer_chunk('imaginal')
+        # print(current_imaginal_chunk)
+        self.actr.mod_chunk(current_imaginal_chunk[0], "wait", "false")
+        self.RHSWaitFlag = False
+        # self.actr.schedule_simple_event_now("mod-chunk-fct", 'imaginal', 'wait', 'false')
+
+        print("here3")
+        while not self.tickable:
+            time.sleep(0.00001)
+
+        self.stepped = True
+        self.tickable = False
+
+        print("here4")
 
         action_id, spatial_action, value_estimate = self.sess.run(
             [self.sampled_action_id, self.sampled_spatial_action, self.value_estimate],

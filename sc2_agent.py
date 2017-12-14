@@ -13,10 +13,7 @@
 # limitations under the License.
 """Scripted agents."""
 
-from twisted.internet import protocol, reactor
-from twisted.protocols.basic import LineReceiver
-import json
-import numpy
+
 
 from pysc2.agents import base_agent
 from pysc2.lib import actions

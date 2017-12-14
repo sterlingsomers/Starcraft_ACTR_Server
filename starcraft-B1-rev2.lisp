@@ -67,6 +67,20 @@
 (add-dm
  (goal ISA initialize state select-army))
 
+;(P game-start
+;   =goal>
+;       ISA        initialize
+;       state      game-start
+;   =imaginal>
+;     - wait       true
+;   ==>
+;   =goal>
+;       state      select-army
+;   =imaginal>
+;       wait       true
+;   !eval! ("GameStartWait")
+;)
+
 (P clear-mission
    =goal>
        ISA        initialize

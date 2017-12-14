@@ -11,11 +11,13 @@ from actorcritic.agent import ActorCriticAgent, ACMode
 from actorcritic.runner import Runner, PPORunParams
 from common.multienv import SubprocVecEnv, make_sc2env, SingleEnv
 
+#import threading
+
 FLAGS = flags.FLAGS
 flags.DEFINE_bool("visualize", False, "Whether to render with pygame.")
 flags.DEFINE_integer("resolution", 32, "Resolution for screen and minimap feature layers.")
 flags.DEFINE_integer("step_mul", 8, "Game steps per agent step.")
-flags.DEFINE_integer("n_envs", 3, "Number of environments to run in parallel")
+flags.DEFINE_integer("n_envs", 2, "Number of environments to run in parallel")
 flags.DEFINE_integer("n_steps_per_batch", None,
     "Number of steps per batch, if None use 8 for a2c and 128 for ppo")  # (MINE) TIMESTEPS HERE!!!
 flags.DEFINE_integer("all_summary_freq", 50, "Record all summaries every n batch")
@@ -110,6 +112,12 @@ def main():
     )
 
     agent.build_model()
+
+    #start ACT-R? This won't work for multiples...
+    #act_thread = threading.Thread(target=actr.run, args=[300])
+    #act_thread.start()
+
+
     if os.path.exists(full_chekcpoint_path):
         agent.load(full_chekcpoint_path) #(MINE) LOAD!!!
     else:
