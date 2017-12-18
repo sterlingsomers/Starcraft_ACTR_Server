@@ -55,7 +55,7 @@
 ;;should be happening between tics
 
 
-(P check-neutrals
+(P click-beacon
    =goal>
        ISA        initialize
        state      check-neutrals
