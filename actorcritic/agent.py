@@ -380,13 +380,7 @@ class ActorCriticAgent:
 
         #TODO obs["available_action_ids"] is incorrect, I think.
         #TODO what it SEEMS to be is an array of binary values. 1 = action available, 0 = not available.
-        #print("ACtion IDS")
-        #for x in obs["available_action_ids"]:
-        #    print(x, x[331])
-        #if not _MOVE_SCREEN in obs["available_action_ids"]:
-        #    print("MOVE SCREEN check")
-        #    current_goal_chunk = self.actr.buffer_chunk('goal')
-        #    self.actr.mod_chunk(current_goal_chunk[0], "state", "select-army")
+
         if not obs["available_action_ids"][0][_MOVE_SCREEN]:
             current_goal_chunk = self.actr.buffer_chunk('goal')
             self.actr.mod_chunk(current_goal_chunk[0], "state", "select-army")
