@@ -215,7 +215,7 @@ class ActorCriticAgent:
         if neutral_y.any():
             # print(neutral_y, len(neutral_y), min(neutral_y), max(neutral_y))
 
-
+            #TODO stop sending the mean. Send all the raw_data
             chk = self.actr.define_chunks(['neutral_x', int(neutral_x.mean()), 'neutral_y', int(neutral_y.mean()),'wait', 'false'])
             # the wait, false is for to make sure something other than the wait production fires.
 
@@ -378,8 +378,6 @@ class ActorCriticAgent:
         print("here")
         # this is a temporary solution for resetting...
 
-        #TODO obs["available_action_ids"] is incorrect, I think.
-        #TODO what it SEEMS to be is an array of binary values. 1 = action available, 0 = not available.
 
         if not obs["available_action_ids"][0][_MOVE_SCREEN]:
             current_goal_chunk = self.actr.buffer_chunk('goal')
