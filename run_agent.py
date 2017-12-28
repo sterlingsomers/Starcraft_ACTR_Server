@@ -178,7 +178,8 @@ def main():
     #_print(i)
     if FLAGS.training:
         _save_if_training(agent)
-    envs.env.save_replay('/Users/constantinos/Documents/StarcraftMAC/MyAgents/')
+    if not FLAGS.training:
+        envs.env.save_replay('/Users/constantinos/Documents/StarcraftMAC/MyAgents/')
 
     envs.close()
 
