@@ -17,15 +17,16 @@ FLAGS = flags.FLAGS
 flags.DEFINE_bool("visualize", False, "Whether to render with pygame.")
 flags.DEFINE_integer("resolution", 32, "Resolution for screen and minimap feature layers.")
 flags.DEFINE_integer("step_mul", 8, "Game steps per agent step.")
-flags.DEFINE_integer("n_envs", 2, "Number of environments to run in parallel")
+flags.DEFINE_integer("n_envs", 1, "Number of environments to run in parallel")
+flags.DEFINE_integer("episodes", 3, "Number of complete episodes")
 flags.DEFINE_integer("n_steps_per_batch", None,
     "Number of steps per batch, if None use 8 for a2c and 128 for ppo")  # (MINE) TIMESTEPS HERE!!!
 flags.DEFINE_integer("all_summary_freq", 50, "Record all summaries every n batch")
 flags.DEFINE_integer("scalar_summary_freq", 5, "Record scalar summaries every n batch")
 flags.DEFINE_string("checkpoint_path", "_files/models", "Path for agent checkpoints")
 flags.DEFINE_string("summary_path", "_files/summaries", "Path for tensorboard summaries")
-flags.DEFINE_string("model_name", "temp_testing", "Name for checkpoints and tensorboard summaries")
-flags.DEFINE_integer("K_batches", -1,
+flags.DEFINE_string("model_name", "my_beacon_model", "Name for checkpoints and tensorboard summaries")
+flags.DEFINE_integer("K_batches", 50,
     "Number of training batches to run in thousands, use -1 to run forever") #(MINE) not for now
 flags.DEFINE_string("map_name", "MoveToBeacon", "Name of a map to use.")
 flags.DEFINE_float("discount", 0.95, "Reward-discount for the agent")
@@ -71,14 +72,13 @@ def _print(i):
 
 
 def _save_if_training(agent):
-    if FLAGS.training:
-        agent.save(full_chekcpoint_path)
-        agent.flush_summaries()
-        sys.stdout.flush()
+    agent.save(full_chekcpoint_path)
+    agent.flush_summaries()
+    sys.stdout.flush()
 
 
 def main():
-    if FLAGS.training==True:
+    if FLAGS.training:
         check_and_handle_existing_folder(full_chekcpoint_path)
         check_and_handle_existing_folder(full_summary_path)
 
@@ -88,11 +88,14 @@ def main():
         game_steps_per_episode=0,
         screen_size_px=(FLAGS.resolution,) * 2,
         minimap_size_px=(FLAGS.resolution,) * 2,
-        visualize=FLAGS.visualize
+        visualize=FLAGS.visualize,
+        replay_dir='/Users/constantinos/Documents/StarcraftMAC/MyAgents/'
     )
-#(MINE) Create multiple parallel environements
-    envs = SubprocVecEnv((partial(make_sc2env, **env_args),) * FLAGS.n_envs)
-    # envs = SingleEnv(make_sc2env(**env_args))
+#(MINE) Create multiple parallel environements (or a single instance for testing agent)
+    if FLAGS.training:
+        envs = SubprocVecEnv((partial(make_sc2env, **env_args),) * FLAGS.n_envs)
+    else:
+        envs = SingleEnv(make_sc2env(**env_args))
 
     tf.reset_default_graph()
     sess = tf.Session()
@@ -110,10 +113,8 @@ def main():
         summary_path=full_summary_path,
         max_gradient_norm=FLAGS.max_gradient_norm
     )
-
+    # Build Agent
     agent.build_model()
-
-
     if os.path.exists(full_chekcpoint_path):
         agent.load(full_chekcpoint_path) #(MINE) LOAD!!!
     else:
@@ -142,31 +143,42 @@ def main():
         ppo_par=ppo_par
     )
 
-    runner.reset()
+    runner.reset() # Reset env which means you get first observation
 
     if FLAGS.K_batches >= 0:
         n_batches = FLAGS.K_batches  # (MINE) commented here so no need for thousands * 1000
     else:
         n_batches = -1
 
-    i = 0
 
-    try:
-        while True:
-            if i % 500 == 0:
-                _print(i)
-            if i % 4000 == 0:
-                _save_if_training(agent)
-            runner.run_batch()  # (MINE) HERE WE RUN for while true
-            i += 1
-            if 0 <= n_batches <= i:
-                break
-    except KeyboardInterrupt:
-        pass
+    if FLAGS.training:
+        i = 0
+
+        try:
+            while True:
+                if i % 500 == 0:
+                    _print(i)
+                if i % 4000 == 0:
+                    _save_if_training(agent)
+                runner.run_batch()  # (MINE) HERE WE RUN MAIN LOOP for while true
+                i += 1
+                if 0 <= n_batches <= i:
+                    break
+        except KeyboardInterrupt:
+            pass
+    else: # Test the agent
+        try:
+            while runner.episode_counter <= (FLAGS.episodes - 1):
+                # You need the -1 as counting starts from zero so for counter 3 you do 4 episodes
+                runner.run_trained_batch()  # (MINE) HERE WE RUN MAIN LOOP for while true
+        except KeyboardInterrupt:
+            pass
 
     print("Okay. Work is done")
-    _print(i)
-    _save_if_training(agent)
+    #_print(i)
+    if FLAGS.training:
+        _save_if_training(agent)
+    envs.env.save_replay('/Users/constantinos/Documents/StarcraftMAC/MyAgents/')
 
     envs.close()
 
