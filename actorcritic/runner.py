@@ -1,4 +1,5 @@
 from collections import namedtuple
+from pysc2.lib import actions
 
 import numpy as np
 import sys
@@ -72,13 +73,14 @@ class Runner(object):
         mb_values = np.zeros((self.envs.n_envs, self.n_steps + 1), dtype=np.float32)
         mb_rewards = np.zeros((self.envs.n_envs, self.n_steps), dtype=np.float32)
 
-        latest_obs = self.latest_obs
+        latest_obs = self.latest_obs # (MINE) =state(t)
 
         for n in range(self.n_steps):
             # could calculate value estimate from obs when do training
             # but saving values here will make n step reward calculation a bit easier
             action_ids, spatial_action_2ds, value_estimate = self.agent.step(latest_obs)
-
+            #print('step: ', n, action_ids, spatial_action_2ds, value_estimate)  # (MINE)
+            # (MINE) Store actions and value estimates for all steps
             mb_values[:, n] = value_estimate
             mb_obs.append(latest_obs)
             mb_actions.append((action_ids, spatial_action_2ds))
@@ -122,4 +124,27 @@ class Runner(object):
 
         self.latest_obs = latest_obs
         self.batch_counter += 1
+        #print('Batch %d finished' % self.batch_counter)
+        sys.stdout.flush()
+
+    def run_trained_batch(self):
+        # state = state(0), initialized by the env.reset()
+        latest_obs = self.latest_obs # (MINE) =state(t)
+        # action = agent(state)
+        action_ids, spatial_action_2ds, value_estimate = self.agent.step(latest_obs) # (MINE) AGENT STEP = INPUT TO NN THE CURRENT STATE AND OUTPUT ACTION
+        print('action: ', actions.FUNCTIONS[action_ids[0]].name, 'on', 'x=', spatial_action_2ds[0][0], 'y=', spatial_action_2ds[0][1], 'Value=', value_estimate[0])
+        actions_pp = self.action_processer.process(action_ids, spatial_action_2ds)
+        # state(t+1) = env.step(action)
+        obs_raw = self.envs.step(actions_pp) # (MINE) ENVS STEP = THE ACTUAL ENVIRONMENTAL STEP
+        latest_obs = self.obs_processer.process(
+            obs_raw)  # (MINE) =process(state(t+1)). Processes all inputs/obs from all timesteps
+
+        # Check for all t (timestep/observation in obs_raw which t has the last state true, meaning it is the last state
+        for t in obs_raw:
+            if t.last():
+                self._handle_episode_end(t)
+
+        self.latest_obs = latest_obs # (MINE) state(t) = state(t+1), the usual s=s'
+        self.batch_counter += 1
+        #print('Batch %d finished' % self.batch_counter)
         sys.stdout.flush()
