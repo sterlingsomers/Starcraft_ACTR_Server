@@ -236,14 +236,14 @@ class ActorCriticAgent:
 
 
         if args[0] == "_SELECT_ARMY":
-            self.response = [_SELECT_ARMY, [_SELECT_ALL]]
+            pass#self.response = [_SELECT_ARMY, [_SELECT_ALL]]
         elif args[0] == "_MOVE_SCREEN":
-            self.response = [_MOVE_SCREEN, [_NOT_QUEUED, [args[2][1],args[3][1]]]]
+           pass#self.response = [_MOVE_SCREEN, [_NOT_QUEUED, [args[2][1],args[3][1]]]]
         else:
             pass
 
 
-        print("RES:", self.response)
+        #print("RES:", self.response)
 
         self.do_tic()
 
