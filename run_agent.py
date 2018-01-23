@@ -17,7 +17,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_bool("visualize", False, "Whether to render with pygame.")
 flags.DEFINE_integer("resolution", 128, "Resolution for screen and minimap feature layers.")
 flags.DEFINE_integer("step_mul", 8, "Game steps per agent step.")
-flags.DEFINE_integer("n_envs", 1, "Number of environments to run in parallel")
+flags.DEFINE_integer("n_envs", 8, "Number of environments to run in parallel")
 flags.DEFINE_integer("episodes", 3, "Number of complete episodes")
 flags.DEFINE_integer("n_steps_per_batch", None,
     "Number of steps per batch, if None use 8 for a2c and 128 for ppo")  # (MINE) TIMESTEPS HERE!!!
@@ -89,7 +89,7 @@ def main():
         screen_size_px=(FLAGS.resolution,) * 2,
         minimap_size_px=(FLAGS.resolution,) * 2,
         visualize=FLAGS.visualize,
-        replay_dir='/Users/constantinos/Documents/StarcraftMAC/MyAgents/'
+        replay_dir='/Users/paulsomers/StarcraftMAC/MyAgents/'
     )
 #(MINE) Create multiple parallel environements (or a single instance for testing agent)
     if FLAGS.training:
