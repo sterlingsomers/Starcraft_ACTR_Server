@@ -15,7 +15,7 @@ from common.multienv import SubprocVecEnv, make_sc2env, SingleEnv
 
 FLAGS = flags.FLAGS
 flags.DEFINE_bool("visualize", False, "Whether to render with pygame.")
-flags.DEFINE_integer("resolution", 32, "Resolution for screen and minimap feature layers.")
+flags.DEFINE_integer("resolution", 128, "Resolution for screen and minimap feature layers.")
 flags.DEFINE_integer("step_mul", 8, "Game steps per agent step.")
 flags.DEFINE_integer("n_envs", 1, "Number of environments to run in parallel")
 flags.DEFINE_integer("episodes", 3, "Number of complete episodes")
@@ -36,10 +36,10 @@ flags.DEFINE_boolean("training", False,
 flags.DEFINE_enum("if_output_exists", "fail", ["fail", "overwrite", "continue"],
     "What to do if summary and model output exists, only for training, is ignored if notraining")
 flags.DEFINE_float("max_gradient_norm", 500.0, "good value might depend on the environment")
-flags.DEFINE_float("loss_value_weight", 1.0, "good value might depend on the environment")
-flags.DEFINE_float("entropy_weight_spatial", 1e-6,
+flags.DEFINE_float("loss_value_weight", 0.001, "good value might depend on the environment")
+flags.DEFINE_float("entropy_weight_spatial", 0.001,
     "entropy of spatial action distribution loss weight")
-flags.DEFINE_float("entropy_weight_action", 1e-6, "entropy of action-id distribution loss weight")
+flags.DEFINE_float("entropy_weight_action", 0.001, "entropy of action-id distribution loss weight")
 flags.DEFINE_float("ppo_lambda", 0.95, "lambda parameter for ppo")
 flags.DEFINE_integer("ppo_batch_size", None, "batch size for ppo, if None use n_steps_per_batch")
 flags.DEFINE_integer("ppo_epochs", 3, "epochs per update")
