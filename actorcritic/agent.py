@@ -9,6 +9,9 @@ from actorcritic.policy import FullyConvPolicy
 from common.preprocess import ObsProcesser, FEATURE_KEYS, AgentInputTuple
 from common.util import weighted_random_sample, select_from_each_row, ravel_index_pairs
 
+import matplotlib as mpl
+mpl.use('TkAgg')
+import matplotlib.pyplot as plt
 
 #TODO why doesn't it already import the features?
 from pysc2.lib import features
@@ -253,13 +256,13 @@ class ActorCriticAgent:
         self.placeholders = _get_placeholders(self.spatial_dim)
 
         with tf.variable_scope("theta"):
-            theta = self.policy(self, trainable=True).build()
+            self.theta = self.policy(self, trainable=True).build()
 
         selected_spatial_action_flat = ravel_index_pairs(
             self.placeholders.selected_spatial_action, self.spatial_dim
         )
 
-        selected_log_probs = self._get_select_action_probs(theta, selected_spatial_action_flat)
+        selected_log_probs = self._get_select_action_probs(self.theta, selected_spatial_action_flat)
 
         # maximum is to avoid 0 / 0 because this is used to calculate some means
         sum_spatial_action_available = tf.maximum(
@@ -267,10 +270,10 @@ class ActorCriticAgent:
         )
 
         neg_entropy_spatial = tf.reduce_sum(
-            theta.spatial_action_probs * theta.spatial_action_log_probs
+            self.theta.spatial_action_probs * self.theta.spatial_action_log_probs
         ) / sum_spatial_action_available
         neg_entropy_action_id = tf.reduce_mean(tf.reduce_sum(
-            theta.action_id_probs * theta.action_id_log_probs, axis=1
+            self.theta.action_id_probs * self.theta.action_id_log_probs, axis=1
         ))
 
         if self.mode == ACMode.PPO:
@@ -278,15 +281,15 @@ class ActorCriticAgent:
             with tf.variable_scope("theta_old"):
                 theta_old = self.policy(self, trainable=False).build()
 
-            new_theta_var = tf.global_variables("theta/")
+                self.new_theta_var = tf.global_variables("theta/")
             old_theta_var = tf.global_variables("theta_old/")
 
-            assert len(tf.trainable_variables("theta/")) == len(new_theta_var)
+            assert len(tf.trainable_variables("theta/")) == len(self.new_theta_var)
             assert not tf.trainable_variables("theta_old/")
             assert len(old_theta_var) == len(new_theta_var)
 
             self.update_theta_op = [
-                tf.assign(t_old, t_new) for t_new, t_old in zip(new_theta_var, old_theta_var)
+                tf.assign(t_old, t_new) for t_new, t_old in zip(self.new_theta_var, old_theta_var)
             ]
 
             selected_log_probs_old = self._get_select_action_probs(
@@ -308,13 +311,13 @@ class ActorCriticAgent:
                 tf.reduce_mean(tf.to_float(tf.equal(ratio, clipped_ratio))))
             policy_loss = -tf.reduce_mean(l_clip)
         else:
-            self.sampled_action_id = weighted_random_sample(theta.action_id_probs)
-            self.sampled_spatial_action = weighted_random_sample(theta.spatial_action_probs)
-            self.value_estimate = theta.value_estimate
+            self.sampled_action_id = weighted_random_sample(self.theta.action_id_probs)
+            self.sampled_spatial_action = weighted_random_sample(self.theta.spatial_action_probs)
+            self.value_estimate = self.theta.value_estimate
             policy_loss = -tf.reduce_mean(selected_log_probs.total * self.placeholders.advantage)
 
         value_loss = tf.losses.mean_squared_error(
-            self.placeholders.value_target, theta.value_estimate)
+            self.placeholders.value_target, self.theta.value_estimate)
 
         loss = (
             policy_loss
@@ -407,6 +410,8 @@ class ActorCriticAgent:
             [self.sampled_action_id, self.sampled_spatial_action, self.value_estimate],
             feed_dict=feed_dict
         )
+        print(dir(self.sess))
+        print(dir(self.policy))
 
         spatial_action_2d = np.array(
             np.unravel_index(spatial_action, (self.spatial_dim,) * 2)
