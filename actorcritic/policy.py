@@ -23,7 +23,7 @@ class FullyConvPolicy:
         self.conv1 = layers.conv2d(
             inputs=inputs,
             data_format="NHWC",
-            num_outputs=32,
+            num_outputs=16,
             kernel_size=5,
             stride=1,
             padding='SAME',
@@ -34,7 +34,7 @@ class FullyConvPolicy:
         self.conv2 = layers.conv2d(
             inputs=self.conv1,
             data_format="NHWC",
-            num_outputs=128,
+            num_outputs=32,
             kernel_size=3,
             stride=1,
             padding='SAME',
