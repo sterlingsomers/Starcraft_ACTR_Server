@@ -243,13 +243,13 @@ class ActorCriticAgent:
         player_x, player_y = (player_relative == _PLAYER_FRIENDLY).nonzero()[1:3]
 
         if neutral_y.any():
-            orange_beacon = True
+            green_beacon = True
 
             if enemy_y.any():
                 orange_beacon = True
             if player_y.any():
                 player = True
-
+        print("push_observation:", orange_beacon, player, green_beacon)
         if orange_beacon and player and green_beacon:
             #check for blocking or overlap
 
@@ -270,7 +270,7 @@ class ActorCriticAgent:
 
             # print(neutral_y, len(neutral_y), min(neutral_y), max(neutral_y))
 
-
+        if neutral_y.any():
             chk = self.actr.define_chunks(['neutral_x', int(neutral_x.mean()), 'neutral_y', int(neutral_y.mean()),'wait', 'false'])
             # the wait, false is for to make sure something other than the wait production fires.
 
@@ -290,14 +290,14 @@ class ActorCriticAgent:
 
 
         if args[0] == "_SELECT_ARMY":
-            self.response = [_SELECT_ARMY, [_SELECT_ALL]]
+            pass#self.response = [_SELECT_ARMY, [_SELECT_ALL]]
         elif args[0] == "_MOVE_SCREEN":
-            self.response = [_MOVE_SCREEN, [_NOT_QUEUED, [args[2][1],args[3][1]]]]
+            pass#self.response = [_MOVE_SCREEN, [_NOT_QUEUED, [args[2][1],args[3][1]]]]
         else:
             pass
 
 
-        print("RES:", self.response)
+        #print("RES:", self.response)
 
         self.do_tic()
 
@@ -414,7 +414,7 @@ class ActorCriticAgent:
 
     def step(self, obs):
         feed_dict = self._input_to_feed_dict(obs)
-
+        w = False
         #start ACT-R (after the game has started)
         if self.game_start_wait_flag:
             chk = self.actr.define_chunks(
@@ -444,9 +444,11 @@ class ActorCriticAgent:
         print("here2")
         self.obs = obs
         w = self.push_observation(None)
-        #current_imaginal_chunk = self.actr.buffer_chunk('imaginal')
+        while not w:
+            time.sleep(0.00001)
+        current_imaginal_chunk = self.actr.buffer_chunk('imaginal')
         #print("current_imaginal_chunk", current_imaginal_chunk[0])
-        #self.actr.mod_chunk(current_imaginal_chunk[0], "wait", "false")
+        self.actr.mod_chunk(current_imaginal_chunk[0], "wait", "false")
         self.RHSWaitFlag = False
         print("RHSWaitFlag set to False")
         # self.actr.schedule_simple_event_now("mod-chunk-fct", 'imaginal', 'wait', 'false')
