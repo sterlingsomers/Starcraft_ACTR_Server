@@ -14,7 +14,7 @@ from common.util import weighted_random_sample, select_from_each_row, ravel_inde
 from pysc2.lib import features
 
 import actr
-
+import math
 import time
 import threading
 
@@ -130,6 +130,9 @@ class ActorCriticAgent:
         self.actr.add_command("RHSWait", self.RHSWait)
         self.actr.add_command("GameStartWait", self.game_start_wait)
 
+        self.actr.add_command("consine_similarity", self.cosine_similarity)
+
+
         #some act-r items
         self.tickable = False
         self.game_start_wait_flag = True
@@ -177,7 +180,31 @@ class ActorCriticAgent:
         tf.summary.scalar(name, tensor,
             collections=[tf.GraphKeys.SUMMARIES, self._scalar_summary_key])
 
+    def cosine_similarity(self,arg1,arg2):
+        pass
+
+    def is_blocking(self,seg1,seg2,point):
+        '''if green=point is between player=seg1 and orange=seg2'''
+        #https://stackoverflow.com/questions/328107/how-can-you-determine-a-point-is-between-two-other-points-on-a-line-segment
+        crossproduct = (point[1] - seg1[1]) * (seg2[0] - seg1[0]) - (point[0] - seg1[0]) * (seg2[1] - seg1[1])
+        if abs(crossproduct) != 0:
+            return False
+
+        dotproduct = (point[0] - seg1[0]) * (seg2[0] - seg1[0]) + (point[1] - seg1[1]) * (seg2[1] - seg1[1])
+        if dotproduct < 0:
+            return False
+
+        squaredlengthba = (seg2[0] - seg1[0]) * (seg2[0] - seg1[0]) + (seg2[1] - seg1[1]) * (seg2[1] - seg1[1])
+        if dotproduct > squaredlengthba: return False
+
+        return True
+
+    def distance(self,a,b):
+        '''duh. distance betweeen a and b'''
+        pass
+
     def RHSWait(self):
+        print("RHSWwait called, flag set to True")
         self.RHSWaitFlag = True
         while self.RHSWaitFlag:
             time.sleep(0.00001)
@@ -206,13 +233,41 @@ class ActorCriticAgent:
         '''Return a dictionary of observations'''
         player_relative = self.obs["player_relative_screen"]
         #print("PR", (player_relative == _PLAYER_NEUTRAL).nonzero())
-
+        orange_beacon = False
+        green_beacon = False
+        player = False
+        between = False
 
         neutral_y, neutral_x = (player_relative == _PLAYER_NEUTRAL).nonzero()[1:3]
-        #enemy_x, enemy_y = (player_relative == _PLAYER_HOSTILE).nonzero()
-        #player_x, player_y = (player_relative == _PLAYER_FRIENDLY).nonzero()
+        enemy_x, enemy_y = (player_relative == _PLAYER_HOSTILE).nonzero()[1:3]
+        player_x, player_y = (player_relative == _PLAYER_FRIENDLY).nonzero()[1:3]
 
         if neutral_y.any():
+            orange_beacon = True
+
+            if enemy_y.any():
+                orange_beacon = True
+            if player_y.any():
+                player = True
+
+        if orange_beacon and player and green_beacon:
+            #check for blocking or overlap
+
+            #Determine if green is between orange and player
+            green_points = zip(neutral_x,neutral_y)
+            orange_points = zip(enemy_x, enemy_y)
+            player_points = zip(player_x, player_y)
+
+            #https: // stackoverflow.com / questions / 328107 / how - can - you - determine - a - point - is -between - two - other - points - on - a - line - segment
+            between = False
+            set_of_points_to_check_between = [(x,y) for x in player_points for y in orange_points]
+            for points in set_of_points_to_check_between:
+                for green_points in player_points:
+                    if self.is_blocking(points[0],points[1],player_points):
+                        between = True
+            print("BETWEEN", between)
+
+
             # print(neutral_y, len(neutral_y), min(neutral_y), max(neutral_y))
 
 
@@ -229,7 +284,7 @@ class ActorCriticAgent:
 
         return 1
     def set_response(self,*args):
-        print(args)
+        print("set_response:", args)
         args = list(args)
 
 
@@ -389,10 +444,11 @@ class ActorCriticAgent:
         print("here2")
         self.obs = obs
         w = self.push_observation(None)
-        current_imaginal_chunk = self.actr.buffer_chunk('imaginal')
-        # print(current_imaginal_chunk)
-        self.actr.mod_chunk(current_imaginal_chunk[0], "wait", "false")
+        #current_imaginal_chunk = self.actr.buffer_chunk('imaginal')
+        #print("current_imaginal_chunk", current_imaginal_chunk[0])
+        #self.actr.mod_chunk(current_imaginal_chunk[0], "wait", "false")
         self.RHSWaitFlag = False
+        print("RHSWaitFlag set to False")
         # self.actr.schedule_simple_event_now("mod-chunk-fct", 'imaginal', 'wait', 'false')
 
         print("here3")
