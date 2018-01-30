@@ -153,7 +153,7 @@ class ActorCriticAgent:
         for ck in chunks:
             ck.append('lc1_vector')
             random_vector = np.random.randint(100,size=256)
-            str1 = ''.join(str(e) for e in random_vector)
+            str1 = str(random_vector)
             ck.append(str1)
 
         #add them to dm
