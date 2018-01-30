@@ -313,6 +313,8 @@ class ActorCriticAgent:
 
         with tf.variable_scope("theta"):
             theta = self.policy(self, trainable=True).build()
+            self.theta = theta
+
 
         selected_spatial_action_flat = ravel_index_pairs(
             self.placeholders.selected_spatial_action, self.spatial_dim
@@ -453,6 +455,10 @@ class ActorCriticAgent:
             feed_dict=feed_dict
         )
 
+
+        fc1 = self.sess.run(self.theta.fc1, feed_dict=feed_dict)
+        print("FC1", len(fc1))
+        self.old_fc1 = fc1
 
 
 

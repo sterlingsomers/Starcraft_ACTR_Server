@@ -104,6 +104,7 @@ class FullyConvPolicy:
             scope="fc1",
             trainable=self.trainable
         )
+        self.fc1 = fc1
         action_id_probs = layers.fully_connected(
             fc1,
             num_outputs=len(actions.FUNCTIONS),
