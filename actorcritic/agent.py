@@ -132,7 +132,7 @@ class ActorCriticAgent:
         self.actr.add_command("RHSWait", self.RHSWait)
         self.actr.add_command("GameStartWait", self.game_start_wait)
 
-        self.actr.add_command("consine_similarity", self.cosine_similarity)
+        self.actr.add_command("cosine_similarity", self.cosine_similarity)
 
 
         #some act-r items
@@ -144,6 +144,21 @@ class ActorCriticAgent:
         self.obs = None
         self.actrChunks = []
 
+        #Add some chunks to DM
+        chunks = [['isa', 'decision', 'green', 1, 'orange', 1, 'blocking', 1, 'action', 'around'],
+                  ['isa', 'decision', 'green', 0, 'orange', 1, 'blocking', 0, 'action', 'orange'],
+                  ['isa', 'decision', 'green', 1, 'orange', 0, 'blocking', 0, 'action', 'green'],
+                  ['isa', 'decision', 'green', 1, 'orange', 1, 'blocking', 0, 'action', 'orange']]
+        #add random vectors
+        for ck in chunks:
+            ck.append('lc1_vector')
+            random_vector = np.random.randint(100,size=256)
+            str1 = ''.join(str(e) for e in random_vector)
+            ck.append(str1)
+
+        #add them to dm
+        for ck in chunks:
+            actr.add_dm(ck)
 
 
 
@@ -182,8 +197,7 @@ class ActorCriticAgent:
         tf.summary.scalar(name, tensor,
             collections=[tf.GraphKeys.SUMMARIES, self._scalar_summary_key])
 
-    def cosine_similarity(self,arg1,arg2):
-        pass
+
 
     def is_blocking(self,seg1,seg2,point):
         '''if green=point is between player=seg1 and orange=seg2'''
