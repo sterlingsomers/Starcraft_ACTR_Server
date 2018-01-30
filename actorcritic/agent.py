@@ -18,6 +18,8 @@ import math
 import time
 import threading
 
+from scipy import spatial
+
 _PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
 _PLAYER_FRIENDLY = 1
 _PLAYER_NEUTRAL = 3  # beacon/minerals
@@ -288,6 +290,14 @@ class ActorCriticAgent:
             #self.actr.schedule_simple_event_now("ignore")
 
         return 1
+    def cosine_similarity(self,narray1,narray2):
+        if narray1 is None:
+            return 0
+        if narray2 is None:
+            return 0
+
+        return 1 - spatial.distance.cosine(narray1,narray2)
+
     def set_response(self,*args):
         print("set_response:", args)
         args = list(args)
@@ -424,6 +434,7 @@ class ActorCriticAgent:
         w = False
         #start ACT-R (after the game has started)
         if self.game_start_wait_flag:
+            self.old_fc1 = None
             chk = self.actr.define_chunks(
                 ['wait', 'false'])
 
@@ -457,13 +468,14 @@ class ActorCriticAgent:
 
 
         fc1 = self.sess.run(self.theta.fc1, feed_dict=feed_dict)
-        print("FC1", len(fc1))
-        self.old_fc1 = fc1
+        fc1_narray = np.array(fc1)[0]
+        print("FC1",self.cosine_similarity(fc1_narray, self.old_fc1))
+        self.old_fc1 = fc1_narray
 
 
 
         self.obs = obs
-        w = self.push_observation([action_id,spatial_action,value_estimate])
+        w = self.push_observation([action_id,spatial_action,value_estimate,fc1_narray])
         while not w:
             time.sleep(0.00001)
         current_imaginal_chunk = self.actr.buffer_chunk('imaginal')
