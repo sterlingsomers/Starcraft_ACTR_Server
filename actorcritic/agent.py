@@ -299,7 +299,7 @@ class ActorCriticAgent:
                         between = True
             print("BETWEEN", between)
 
-        chunk = ['isa', 'decision', 'wait', 'false', 'green', str(green_beacon), 'orange', str(orange_beacon),
+        chunk = ['isa', 'game-state', 'wait', 'false', 'green', str(green_beacon), 'orange', str(orange_beacon),
                      'between', str(between), 'vector', str(list(args[3])), 'value_estimate', float(args[2][0]) ]
 
         chk = self.actr.define_chunks(chunk)
@@ -325,8 +325,10 @@ class ActorCriticAgent:
         print("Cosine called.", narray1, narray2, type(narray1), type(narray2))
         if narray1 == 'TRUE' or narray1 == 'FALSE':
             if narray1 == narray2:
-                return 1
+                print("cosine: returning 0")
+                return 0
             else:
+                print("cosine: returning -2.5")
                 return -2.5
         if type(narray1) == str:
             if narray1[0] == '[':
@@ -338,14 +340,23 @@ class ActorCriticAgent:
 
                 #basis, s, v = svds(np.array(narray2,narray1))
                 #print(basis, s, v)
-
-                return 1 - spatial.distance.cosine(narray1,narray2)
+                print("cosine: returning ", - 1 + (1 - spatial.distance.cosine(narray1,narray2)))
+                return -1 + (1 - spatial.distance.cosine(narray1,narray2))
         else:
             if narray1 is None:
-                return 0
+                print("cosine: returning 0")
+                return -2.5
             if narray2 is None:
+                print("cosine: returning 0")
+                return -2.5
+            print("cosine: returning ", max([-2.5,-abs(narray1-narray2)/2]))
+            return max([-2.5,-abs(narray1-narray2)/2])
+        print("cosine: returning -2.5")
+
+        if type(narray1) == str:
+            if narray1 == narray2:
+                print("cosine: returning 0")
                 return 0
-            return abs(narray1 - narray2)
         return -2.5
 
     def set_response(self,*args):
@@ -521,7 +532,7 @@ class ActorCriticAgent:
 
         fc1 = self.sess.run(self.theta.fc1, feed_dict=feed_dict)
         fc1_narray = np.array(fc1)[0]
-        print("FC1",self.cosine_similarity(fc1_narray, self.old_fc1))
+        #print("FC1",self.cosine_similarity(fc1_narray, self.old_fc1))
         self.old_fc1 = fc1_narray
 
 
