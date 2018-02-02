@@ -40,13 +40,14 @@
 
 (chunk-type initialize state)
 (chunk-type decision green orange between vector value_estimate action)
-(chunk-type action)
+(chunk-type action value)
+(chunk-type game-state value)
 
 (add-dm
  (goal isa initialize state select-army)
- (select-orange isa action)
- (select-green isa action)
- (select-around isa action))
+ (select-orange isa action value select-orange)
+ (select-green isa action value select-green)
+ (select-around isa action value select-around))
 ;;chunks defined in Python and vector have random elements
 
 (P clear-mission
@@ -55,6 +56,8 @@
        state      select-army
    =imaginal>
      - wait       true
+   ?imaginal>
+       state      free
    ==>
    =goal>
        state      check-neutrals
@@ -70,6 +73,8 @@
 (P wait
    =imaginal>
        wait       true
+   ?imaginal>
+       state      free
    ==>
    =imaginal>
 
@@ -104,7 +109,7 @@
        isa        initialize
        state      check-neutrals
    =imaginal>
-       isa        decision
+       isa        game-state
        green      =green
        orange     =orange
        between    =between
@@ -115,7 +120,7 @@
        state      free
 ==>
    +blending>
-       isa        decision
+       isa        decision ;notice the change from game-state to decision
        green      =green
        orange     =orange
        between    =between
@@ -124,6 +129,7 @@
        :ignore-slots (wait)
        :do-not-generalize (action)
    =imaginal>
+ 
    =goal>
        state      get_action
 )
@@ -148,8 +154,14 @@
    =goal>
        state      do_action
    =imaginal>
+       green      nil
+       orange     nil
+       between    nil
+       vector     nil
+       value_estimate nil
        action     =action
        wait       false
+
 )
 
 (P select-green
@@ -158,11 +170,13 @@
    =imaginal>
        action     select-green
      - wait       true
+
 ==>
     =goal>
        state      check-neutrals
     =imaginal>
-       wait       false
+       wait       true
+       action     nil
     !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" 1 1 )
 )
 
@@ -176,7 +190,8 @@
     =goal>
        state      check-neutrals
     =imaginal>
-       wait       false
+       wait       true
+       action     nil
     !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" 1 1 )
 )
 
@@ -190,7 +205,8 @@
     =goal>
        state      check-neutrals
     =imaginal>
-       wait       false
+       wait       true
+       action     nil
     !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" 1 1 )
 )
      
