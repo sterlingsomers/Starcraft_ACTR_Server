@@ -17,6 +17,10 @@ import actr
 import math
 import time
 import threading
+import random
+
+
+from scipy.sparse.linalg import svds
 
 from scipy import spatial
 
@@ -125,6 +129,7 @@ class ActorCriticAgent:
 
         #load the ACT-R model
         self.actr = actr
+        self.actr.add_command("cosine-similarity", self.cosine_similarity, "similarity hook function")
         self.actr.load_act_r_model("/Users/paulsomers/StarcraftMAC/MyAgents/starcraft-B1-rev2.lisp")
         self.actr.add_command("tic", self.do_tic)
         self.actr.add_command("ignore", self.ignore)
@@ -132,7 +137,7 @@ class ActorCriticAgent:
         self.actr.add_command("RHSWait", self.RHSWait)
         self.actr.add_command("GameStartWait", self.game_start_wait)
 
-        self.actr.add_command("cosine_similarity", self.cosine_similarity)
+
 
 
         #some act-r items
@@ -145,16 +150,19 @@ class ActorCriticAgent:
         self.actrChunks = []
 
         #Add some chunks to DM
-        chunks = [['isa', 'decision', 'green', 1, 'orange', 1, 'blocking', 1, 'action', 'around'],
-                  ['isa', 'decision', 'green', 0, 'orange', 1, 'blocking', 0, 'action', 'orange'],
-                  ['isa', 'decision', 'green', 1, 'orange', 0, 'blocking', 0, 'action', 'green'],
-                  ['isa', 'decision', 'green', 1, 'orange', 1, 'blocking', 0, 'action', 'orange']]
+        chunks = [['isa', 'decision', 'green', 'True', 'orange', 'True', 'between', 'True', 'action', 'select-around'],
+                  ['isa', 'decision', 'green', 'False', 'orange', 'True', 'between', 'False', 'action', 'select-orange'],
+                  ['isa', 'decision', 'green', 'True', 'orange', 'False', 'between', 'False', 'action', 'select-green'],
+                  ['isa', 'decision', 'green', 'True', 'orange', 'True', 'between', 'False', 'action', 'select-orange']]
         #add random vectors
         for ck in chunks:
-            ck.append('lc1_vector')
+            ck.append('vector')
             random_vector = np.random.randint(100,size=256)
-            str1 = str(random_vector)
+            str1 = str(list(random_vector))
             ck.append(str1)
+            ck.append('value_estimate')
+            random_number = random.uniform(0.0,10.0)
+            ck.append(random_number)
 
         #add them to dm
         for ck in chunks:
@@ -248,6 +256,9 @@ class ActorCriticAgent:
 
     def push_observation(self, args):
         '''Return a dictionary of observations'''
+        #args are:
+        #[action_id,spatial_action_2d,value_estimate,fc1_narray]
+
         player_relative = self.obs["player_relative_screen"]
         #print("PR", (player_relative == _PLAYER_NEUTRAL).nonzero())
         orange_beacon = False
@@ -288,29 +299,54 @@ class ActorCriticAgent:
                         between = True
             print("BETWEEN", between)
 
+        chunk = ['isa', 'decision', 'wait', 'false', 'green', str(green_beacon), 'orange', str(orange_beacon),
+                     'between', str(between), 'vector', str(list(args[3])), 'value_estimate', float(args[2][0]) ]
+
+        chk = self.actr.define_chunks(chunk)
+        self.actr.schedule_simple_event_now("set-buffer-chunk", ['imaginal', chk[0]])
+
 
             # print(neutral_y, len(neutral_y), min(neutral_y), max(neutral_y))
 
-        if neutral_y.any():
-            chk = self.actr.define_chunks(['neutral_x', int(neutral_x.mean()), 'neutral_y', int(neutral_y.mean()),'wait', 'false'])
-            # the wait, false is for to make sure something other than the wait production fires.
-
-            #not sure I need the actrChunks list
-            #self.actrChunks.append(chk)
-
-            #self.actr.schedule_simple_event_now("ignore")
-            #self.actr.set_buffer_chunk('imaginal', chk[0])
-            self.actr.schedule_simple_event_now("set-buffer-chunk", ['imaginal', chk[0]])#self.actr.set_buffer_chunk('imaginal',chk[0])
-            #self.actr.schedule_simple_event_now("ignore")
+        # if neutral_y.any():
+        #     chk = self.actr.define_chunks(['neutral_x', int(neutral_x.mean()), 'neutral_y', int(neutral_y.mean()),'wait', 'false'])
+        #     # the wait, false is for to make sure something other than the wait production fires.
+        #
+        #     #not sure I need the actrChunks list
+        #     #self.actrChunks.append(chk)
+        #
+        #     #self.actr.schedule_simple_event_now("ignore")
+        #     #self.actr.set_buffer_chunk('imaginal', chk[0])
+        #     self.actr.schedule_simple_event_now("set-buffer-chunk", ['imaginal', chk[0]])#self.actr.set_buffer_chunk('imaginal',chk[0])
+        #     #self.actr.schedule_simple_event_now("ignore")
 
         return 1
     def cosine_similarity(self,narray1,narray2):
-        if narray1 is None:
-            return 0
-        if narray2 is None:
-            return 0
+        print("Cosine called.", narray1, narray2, type(narray1), type(narray2))
+        if narray1 == 'TRUE' or narray1 == 'FALSE':
+            if narray1 == narray2:
+                return 1
+            else:
+                return -2.5
+        if type(narray1) == str:
+            if narray1[0] == '[':
+                narray1 = np.array(eval(narray1))
+                narray2 = np.array(eval(narray2))
 
-        return 1 - spatial.distance.cosine(narray1,narray2)
+                ed = np.linalg.norm(narray1-narray2)
+                print("linalg",ed)
+
+                #basis, s, v = svds(np.array(narray2,narray1))
+                #print(basis, s, v)
+
+                return 1 - spatial.distance.cosine(narray1,narray2)
+        else:
+            if narray1 is None:
+                return 0
+            if narray2 is None:
+                return 0
+            return abs(narray1 - narray2)
+        return -2.5
 
     def set_response(self,*args):
         print("set_response:", args)
@@ -479,7 +515,9 @@ class ActorCriticAgent:
             [self.sampled_action_id, self.sampled_spatial_action, self.value_estimate],
             feed_dict=feed_dict
         )
-
+        spatial_action_2d = np.array(
+            np.unravel_index(spatial_action, (self.spatial_dim,) * 2)
+        ).transpose()
 
         fc1 = self.sess.run(self.theta.fc1, feed_dict=feed_dict)
         fc1_narray = np.array(fc1)[0]
@@ -489,7 +527,7 @@ class ActorCriticAgent:
 
 
         self.obs = obs
-        w = self.push_observation([action_id,spatial_action,value_estimate,fc1_narray])
+        w = self.push_observation([action_id,spatial_action_2d,value_estimate,fc1_narray])
         while not w:
             time.sleep(0.00001)
         current_imaginal_chunk = self.actr.buffer_chunk('imaginal')
