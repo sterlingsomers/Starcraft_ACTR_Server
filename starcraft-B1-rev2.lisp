@@ -16,12 +16,12 @@
 
 
 (sgp :esc t    ;;set to t to use subsymbolic computations
-     :sim-hook cosine_similarity ;;need to edit the linear-similarity function or just use default?
+     :sim-hook "cosine-similarity" 
      :bln t    ;;added this to ensure blending was enabled, but not sure if it is actually doing anything...
      ;;some parameters moved from +actr-parameters+ in swarm model
      :ans 0.25 ;;activation noise, default is nil, swarm was .75 (M-turkers), Christian recommended .25 as a start.
      :tmp nil  ;;decouple noise if not nil, swarm was .7, perhaps change later.
-     :mp 2.5   ;;partial matching enabled, default is off/nil, start high (2.5 is really high) and move to 1.
+     :mp 1   ;;partial matching enabled, default is off/nil, start high (2.5 is really high) and move to 1.
      :bll 0.5  ;;base-level learning enabled, default is off, this is the recommended value.
      :rt -10.0 ;;retrieval threshold, default is 0, think about editing this number.
      :blc 5    ;;base-level learning constant, default is 0, think about editing this number.
@@ -39,16 +39,19 @@
 
 
 (chunk-type initialize state)
-(chunk-type decision green orange between vector action outcome)
-
+(chunk-type decision green orange between vector value_estimate action)
+(chunk-type action)
 
 (add-dm
- (goal ISA initialize state select-army))
+ (goal isa initialize state select-army)
+ (select-orange isa action)
+ (select-green isa action)
+ (select-around isa action))
 ;;chunks defined in Python and vector have random elements
 
 (P clear-mission
    =goal>
-       ISA        initialize
+       isa        initialize
        state      select-army
    =imaginal>
      - wait       true
@@ -78,25 +81,118 @@
 ;;should be happening between tics
 
 
-(P click-beacon
+;(P click-beacon
+;   =goal>
+;       ISA        initialize
+;       state      check-neutrals
+;   =imaginal>
+;       neutral_x  =nx
+;       neutral_y  =ny
+;    -  wait       true
+;   ==>
+;   =goal>
+;;       state      none
+;   =imaginal>
+;       wait       true
+;   ;-imaginal>
+;
+;   !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" =nx =ny )
+;)
+
+(P click-part-two
    =goal>
-       ISA        initialize
+       isa        initialize
        state      check-neutrals
    =imaginal>
-       neutral_x  =nx
-       neutral_y  =ny
-    -  wait       true
-   ==>
-   =goal>
-;       state      none
+       isa        decision
+       green      =green
+       orange     =orange
+       between    =between
+       vector     =vector
+       value_estimate =value_estimate
+     - wait       true
+   ?blending>
+       state      free
+==>
+   +blending>
+       isa        decision
+       green      =green
+       orange     =orange
+       between    =between
+       vector     =vector
+       value_estimate =value_estimate
+       :ignore-slots (wait)
+       :do-not-generalize (action)
    =imaginal>
-       wait       true
-   ;-imaginal>
-
-   !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" =nx =ny )
+   =goal>
+       state      get_action
 )
 
+(P get_action
+   =goal>
+       isa        initialize
+       state      get_action
+   =blending>
+       isa        decision
+       green      =green
+       orange     =orange
+       between    =between
+       vector     =vector
+       value_estimate =value_estimate
+       action     =action
+   =imaginal>
+   ?blending>
+       state      free
+==>
+  
+   =goal>
+       state      do_action
+   =imaginal>
+       action     =action
+       wait       false
+)
 
+(P select-green
+   =goal>
+       state      do_action
+   =imaginal>
+       action     select-green
+     - wait       true
+==>
+    =goal>
+       state      check-neutrals
+    =imaginal>
+       wait       false
+    !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" 1 1 )
+)
+
+(P select-orange
+   =goal>
+       state      do_action
+   =imaginal>
+       action     select-orange
+     - wait       true
+==>
+    =goal>
+       state      check-neutrals
+    =imaginal>
+       wait       false
+    !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" 1 1 )
+)
+
+(P select-around
+   =goal>
+       state      do_action
+   =imaginal>
+       action     select-around
+     - wait       true
+==>
+    =goal>
+       state      check-neutrals
+    =imaginal>
+       wait       false
+    !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" 1 1 )
+)
      
 
 (goal-focus goal)
