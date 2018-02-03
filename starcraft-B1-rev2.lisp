@@ -62,6 +62,11 @@
    =goal>
        state      check-neutrals
    =imaginal>
+       green      nil
+       orange     nil
+       between    nil
+       vector     nil
+       value_estimate nil
        wait       true
    
    !eval! ("set_response" "_SELECT_ARMY" "[_SELECT_ALL]")
@@ -77,6 +82,12 @@
        state      free
    ==>
    =imaginal>
+       green      nil
+       orange     nil
+       between    nil
+       vector     nil
+       value_estimate nil
+       wait       true
 
    !eval! ("RHSWait")
    
@@ -129,7 +140,12 @@
        :ignore-slots (wait)
        :do-not-generalize (action)
    =imaginal>
- 
+       green      nil
+       orange     nil
+       between    nil
+       vector     nil
+       value_estimate nil
+       wait       false
    =goal>
        state      get_action
 )

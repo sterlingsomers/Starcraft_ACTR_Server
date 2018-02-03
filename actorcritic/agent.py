@@ -337,11 +337,12 @@ class ActorCriticAgent:
 
                 ed = np.linalg.norm(narray1-narray2)
                 print("linalg",ed)
-
+                print("cosine: returning", max([0-ed,-2.5]))
+                return max([(0-ed),-2.5])
                 #basis, s, v = svds(np.array(narray2,narray1))
                 #print(basis, s, v)
-                print("cosine: returning ", - 1 + (1 - spatial.distance.cosine(narray1,narray2)))
-                return -1 + (1 - spatial.distance.cosine(narray1,narray2))
+                #print("cosine: returning ", - 1 + (1 - spatial.distance.cosine(narray1,narray2)))
+                #return -1 + (1 - spatial.distance.cosine(narray1,narray2))
         else:
             if narray1 is None:
                 print("cosine: returning 0")
@@ -351,12 +352,13 @@ class ActorCriticAgent:
                 return -2.5
             print("cosine: returning ", max([-2.5,-abs(narray1-narray2)/2]))
             return max([-2.5,-abs(narray1-narray2)/2])
-        print("cosine: returning -2.5")
+
 
         if type(narray1) == str:
             if narray1 == narray2:
                 print("cosine: returning 0")
                 return 0
+        print("cosine: returning -2.5")
         return -2.5
 
     def set_response(self,*args):
