@@ -138,7 +138,7 @@
        vector     =vector
        value_estimate =value_estimate
        :ignore-slots (wait)
-       :do-not-generalize (action)
+       ;:do-not-generalize (action)
    =imaginal>
        green      nil
        orange     nil
