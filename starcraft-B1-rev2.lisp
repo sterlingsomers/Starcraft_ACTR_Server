@@ -29,7 +29,8 @@
      :ol nil   ;;affects which base-level learning equation is used, default is nil; use 1 later maybe
      :md -2.5  ;;maximum difference, default similarity value between chunks, default is 1.0, maybe edit this.
      :ga 0.0   ;;set goal activation to 0.0 for spreading activation
-     :imaginal-activation 0.0 ;;set imaginal activation to 0.0 for spreading activation
+     :imaginal-activation 1.0 ;;set imaginal activation to 0.0 for spreading activation
+     :mas 1.0 ;;spreading activation
      ;;back to some parameters in the original sgp here
      :v t      ;;set to nil to turn off model output
      :blt t    ;;set to nil to turn off blending trace
