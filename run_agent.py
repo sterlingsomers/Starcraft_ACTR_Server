@@ -11,7 +11,7 @@ from actorcritic.agent import ActorCriticAgent, ACMode
 from actorcritic.runner import Runner, PPORunParams
 from common.multienv import SubprocVecEnv, make_sc2env, SingleEnv
 
-#import threading
+import pickle
 
 FLAGS = flags.FLAGS
 flags.DEFINE_bool("visualize", False, "Whether to render with pygame.")
@@ -25,7 +25,7 @@ flags.DEFINE_integer("all_summary_freq", 50, "Record all summaries every n batch
 flags.DEFINE_integer("scalar_summary_freq", 5, "Record scalar summaries every n batch")
 flags.DEFINE_string("checkpoint_path", "_files/models", "Path for agent checkpoints")
 flags.DEFINE_string("summary_path", "_files/summaries", "Path for tensorboard summaries")
-flags.DEFINE_string("model_name", "HighRest_beta", "Name for checkpoints and tensorboard summaries")
+flags.DEFINE_string("model_name", "my_beacon_beta_model", "Name for checkpoints and tensorboard summaries")
 flags.DEFINE_integer("K_batches", 50,
     "Number of training batches to run in thousands, use -1 to run forever") #(MINE) not for now
 flags.DEFINE_string("map_name", "MoveToBeacon_beta", "Name of a map to use.")
@@ -175,6 +175,8 @@ def main():
             pass
 
     print("Okay. Work is done")
+
+    pickle.dump(agent.analysis_data, open("/Users/paulsomers/StarcraftMAC/MyAgents/analysis_data.p", "wb"))
     #_print(i)
     if FLAGS.training:
         _save_if_training(agent)

@@ -16,7 +16,9 @@ import matplotlib.pyplot as plt
 #TODO why doesn't it already import the features?
 from pysc2.lib import features
 
-
+import math
+import random
+from scipy import spatial
 
 _PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
 _PLAYER_FRIENDLY = 1
@@ -122,7 +124,9 @@ class ActorCriticAgent:
         self.policy = policy
 
 
-
+        self.first_run = True
+        self.analysis_data = []
+        self.run_value = 0
 
 
         opt_class = tf.train.AdamOptimizer if optimiser == "adam" else tf.train.RMSPropOptimizer
@@ -277,6 +281,89 @@ class ActorCriticAgent:
     def _input_to_feed_dict(self, input_dict):
         return {k + ":0": v for k, v in input_dict.items()}
 
+    def is_blocking(self, seg1, seg2, point):
+        '''if green=point is between player=seg1 and orange=seg2'''
+        # https://stackoverflow.com/questions/328107/how-can-you-determine-a-point-is-between-two-other-points-on-a-line-segment
+        # print("is_blocking:", seg1, seg2, point)
+        crossproduct = (point[1] - seg1[1]) * (seg2[0] - seg1[0]) - (point[0] - seg1[0]) * (seg2[1] - seg1[1])
+        if abs(crossproduct) != 0:
+            return False
+
+        dotproduct = (point[0] - seg1[0]) * (seg2[0] - seg1[0]) + (point[1] - seg1[1]) * (seg2[1] - seg1[1])
+        if dotproduct < 0:
+            return False
+
+        squaredlengthba = (seg2[0] - seg1[0]) * (seg2[0] - seg1[0]) + (seg2[1] - seg1[1]) * (seg2[1] - seg1[1])
+        if dotproduct > squaredlengthba: return False
+
+        return True
+
+    def create_dict(self,action_id,value_estimate,fc1,obs):
+        player_relative = obs["player_relative_screen"]
+        # print("PR", (player_relative == _PLAYER_NEUTRAL).nonzero())
+        orange_beacon = False
+        green_beacon = False
+        player = False
+        between = False
+
+        neutral_x, neutral_y = (player_relative == _PLAYER_NEUTRAL).nonzero()[1:3]
+        enemy_x, enemy_y = (player_relative == _PLAYER_HOSTILE).nonzero()[1:3]
+        player_x, player_y = (player_relative == _PLAYER_FRIENDLY).nonzero()[1:3]
+
+        if neutral_y.any():
+            green_beacon = True
+
+            if enemy_y.any():
+                orange_beacon = True
+            if player_y.any():
+                player = True
+        print("push_observation:", orange_beacon, player, green_beacon)
+        if orange_beacon and player and green_beacon:
+            # check for blocking or overlap
+
+            # Determine if green is between orange and player
+            green_points = list(zip(neutral_x, neutral_y))
+            orange_points = list(zip(enemy_x, enemy_y))
+            player_points = list(zip(player_x, player_y))
+
+            # https: // stackoverflow.com / questions / 328107 / how - can - you - determine - a - point - is -between - two - other - points - on - a - line - segment
+            between = False
+            set_of_points_to_check_between = [(x, y) for x in player_points for y in orange_points]
+
+            for points in set_of_points_to_check_between:
+                for green_point in green_points:
+                    if self.is_blocking(points[0], points[1], green_point):
+                        between = True
+            print("BETWEEN", between)
+
+        #chunk = ['isa', 'game-state', 'wait', 'false', 'green', str(green_beacon), 'orange', str(orange_beacon),
+        #         'between', str(between), 'vector', str(list(args[3])), 'value_estimate', float(args[2][0])]
+        rdict = {'green':green_beacon,'orange':orange_beacon,'blocking':between,
+                 'fc1':fc1,"action_id":action_id,"value_estimate":value_estimate,
+                 'case_list':[]}
+        if self.first_run:
+            return rdict
+        else:
+            case_dict = {}
+            for case in self.analysis_data:
+                case_dict['green']=case['green']
+                case_dict['orange']=case['orange']
+                case_dict['blocking']=case['blocking']
+                case_dict['cosine']=self.cosine_similarity(case['fc1'],fc1)
+                case_dict['euclidean']=self.euclidean_distance(case['fc1'],fc1)
+                case_dict['delta_estimate']=self.delta_estimate(case['value_estimate'],value_estimate)
+                rdict['case_list'].append(dict(case_dict))
+        return rdict
+
+    def cosine_similarity(self,narray1,narray2):
+        return 1 - spatial.distance.cosine(narray1,narray2)
+
+    def euclidean_distance(self,narray1,narray2):
+        return np.linalg.norm(narray1-narray2)
+
+    def delta_estimate(self,estimate1,estimate2):
+        return abs(estimate1-estimate2)
+
     def step(self, obs):
         feed_dict = self._input_to_feed_dict(obs)
 
@@ -292,6 +379,17 @@ class ActorCriticAgent:
             np.unravel_index(spatial_action, (self.spatial_dim,) * 2)
         ).transpose()
 
+
+        fc1 = self.sess.run(self.theta.fc1, feed_dict=feed_dict)
+        fc1_array = np.array(fc1)[0]
+
+        store_dict = self.create_dict(action_id=action_id,value_estimate=value_estimate[0],
+                                      fc1=fc1_array,obs=obs)
+
+        print("here")
+        self.analysis_data.append(store_dict)
+
+        self.first_run = False
         return action_id, spatial_action_2d, value_estimate
 
     def train(self, input_dict):
@@ -327,6 +425,7 @@ class ActorCriticAgent:
         self.summary_writer.flush()
 
     def save(self, path, step=None):
+
         os.makedirs(path, exist_ok=True)
         step = step or self.train_step
         print("saving model to %s, step %d" % (path, step))
