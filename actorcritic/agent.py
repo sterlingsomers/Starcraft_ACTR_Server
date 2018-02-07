@@ -277,6 +277,15 @@ class ActorCriticAgent:
                 orange_beacon = True
             if player_y.any():
                 player = True
+
+        if enemy_y.any():
+            orange_beacon = True
+
+            if neutral_y.any():
+                green_beacon = True
+            if player_y.any():
+                player = True
+
         print("push_observation:", orange_beacon, player, green_beacon)
         if orange_beacon and player and green_beacon:
             #check for blocking or overlap
