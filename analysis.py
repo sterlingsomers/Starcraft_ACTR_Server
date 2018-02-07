@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import pickle
 
 
-data = pickle.load(open("analysis_data.p", "rb"))
+data = pickle.load(open("analysis_data_100_random.p", "rb"))
 for x in range(0,len(data),3):
     plt.figure(x)
     cases = data[x]['case_list']
@@ -29,7 +29,9 @@ for x in range(0,len(data),3):
             colors.append('red')
         elif case['green'] and not case['orange'] and not case['blocking']:
             colors.append('green')
-        elif case['green'] and case['orange']:
+        elif case['green'] and case['orange'] and not case['blocking']:
+            colors.append('pink')
+        elif not case['green'] and case['orange'] and not case['blocking']:
             colors.append('orange')
         else:
             colors.append('black')

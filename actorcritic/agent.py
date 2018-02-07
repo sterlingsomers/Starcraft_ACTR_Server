@@ -317,6 +317,14 @@ class ActorCriticAgent:
                 orange_beacon = True
             if player_y.any():
                 player = True
+        if enemy_x.any():
+            orange_beacon = True
+
+            if neutral_y.any():
+                green_beacon = True
+            if player_y.any():
+                player = True
+
         print("push_observation:", orange_beacon, player, green_beacon)
         if orange_beacon and player and green_beacon:
             # check for blocking or overlap
@@ -366,8 +374,10 @@ class ActorCriticAgent:
 
     def step(self, obs):
         feed_dict = self._input_to_feed_dict(obs)
-
-
+        scenario_start=False
+        #a way we might be able to determine the beginning of the scenario
+        #if not obs["available_action_ids"][0][_MOVE_SCREEN]:
+        #    scenario_start=True
 
         action_id, spatial_action, value_estimate = self.sess.run(
             [self.sampled_action_id, self.sampled_spatial_action, self.value_estimate],
@@ -383,11 +393,12 @@ class ActorCriticAgent:
         fc1 = self.sess.run(self.theta.fc1, feed_dict=feed_dict)
         fc1_array = np.array(fc1)[0]
 
-        store_dict = self.create_dict(action_id=action_id,value_estimate=value_estimate[0],
+        if scenario_start:
+            store_dict = self.create_dict(action_id=action_id,value_estimate=value_estimate[0],
                                       fc1=fc1_array,obs=obs)
 
-        print("here")
-        self.analysis_data.append(store_dict)
+            print("here")
+            self.analysis_data.append(store_dict)
 
         self.first_run = False
         return action_id, spatial_action_2d, value_estimate
