@@ -28,7 +28,7 @@ flags.DEFINE_string("summary_path", "_files/summaries", "Path for tensorboard su
 flags.DEFINE_string("model_name", "my_beacon_beta_model", "Name for checkpoints and tensorboard summaries")
 flags.DEFINE_integer("K_batches", 50,
     "Number of training batches to run in thousands, use -1 to run forever") #(MINE) not for now
-flags.DEFINE_string("map_name", "MoveToBeacon_beta", "Name of a map to use.")
+flags.DEFINE_string("map_name", "MoveToBeacon_random", "Name of a map to use.")
 flags.DEFINE_float("discount", 0.95, "Reward-discount for the agent")
 flags.DEFINE_boolean("training", False,
     "if should train the model, if false then save only episode score summaries"
