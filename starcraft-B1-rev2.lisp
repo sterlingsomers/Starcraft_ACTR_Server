@@ -17,13 +17,14 @@
 
 (sgp :esc t    ;;set to t to use subsymbolic computations
      :sim-hook "cosine-similarity" 
+     :cache-sim-hook-results t
      :bln t    ;;added this to ensure blending was enabled, but not sure if it is actually doing anything...
      ;;some parameters moved from +actr-parameters+ in swarm model
      :ans 0.25 ;;activation noise, default is nil, swarm was .75 (M-turkers), Christian recommended .25 as a start.
      :tmp nil  ;;decouple noise if not nil, swarm was .7, perhaps change later.
      :mp 1   ;;partial matching enabled, default is off/nil, start high (2.5 is really high) and move to 1.
      :bll 0.5  ;;base-level learning enabled, default is off, this is the recommended value.
-     :rt -10.0 ;;retrieval threshold, default is 0, think about editing this number.
+     :rt -1.0 ;;retrieval threshold, default is 0, think about editing this number.
      :blc 5    ;;base-level learning constant, default is 0, think about editing this number.
      :lf 0.25  ;;latency factor for retrieval times, default is 1.0, think about editing this number.
      :ol nil   ;;affects which base-level learning equation is used, default is nil; use 1 later maybe
@@ -32,8 +33,8 @@
      :imaginal-activation 1.0 ;;set imaginal activation to 0.0 for spreading activation
      :mas 1.0 ;;spreading activation
      ;;back to some parameters in the original sgp here
-     :v t      ;;set to nil to turn off model output
-     :blt t    ;;set to nil to turn off blending trace
+     :v nil      ;;set to nil to turn off model output
+     :blt nil    ;;set to nil to turn off blending trace
      :trace-detail high ;;lower this as needed, start at high for initial debugging.
      :style-warnings t  ;;set to nil to turn off production warnings, start at t for initial debugging.
      ) ;;end sgp
@@ -194,7 +195,7 @@
     =imaginal>
        wait       true
        action     nil
-    !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" 1 1 )
+    !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" 1 1 "select_green")
 )
 
 (P select-orange
@@ -209,9 +210,23 @@
     =imaginal>
        wait       true
        action     nil
-    !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" 1 1 )
+    !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" 1 1 "select_orange")
 )
 
+(P select-beacon
+   =goal>
+       state      do_action
+   =imaginal>
+       action     select-beacon
+     - wait       true
+==>
+    =goal>
+       state      check-neutrals
+    =imaginal>
+       wait       true
+       action     nil
+    !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" 1 1 "select_beacon")
+)
 (P select-around
    =goal>
        state      do_action
@@ -224,7 +239,7 @@
     =imaginal>
        wait       true
        action     nil
-    !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" 1 1 )
+    !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" 1 1 "select_around")
 )
      
 
