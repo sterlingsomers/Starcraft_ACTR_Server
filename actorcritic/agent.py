@@ -19,6 +19,8 @@ import time
 import threading
 import random
 
+import pickle
+
 
 from scipy.sparse.linalg import svds
 
@@ -150,19 +152,21 @@ class ActorCriticAgent:
         self.actrChunks = []
 
         #Add some chunks to DM
-        chunks = [['isa', 'decision', 'green', 'True', 'orange', 'True', 'between', 'True', 'action', 'select-around'],
-                  ['isa', 'decision', 'green', 'False', 'orange', 'True', 'between', 'False', 'action', 'select-orange'],
-                  ['isa', 'decision', 'green', 'True', 'orange', 'False', 'between', 'False', 'action', 'select-green'],
-                  ['isa', 'decision', 'green', 'True', 'orange', 'True', 'between', 'False', 'action', 'select-orange']]
-        #add random vectors
-        for ck in chunks:
-            ck.append('vector')
-            random_vector = np.random.randint(100,size=256)
-            str1 = str(list(random_vector))
-            ck.append(str1)
-            ck.append('value_estimate')
-            random_number = random.uniform(0.0,10.0)
-            ck.append(random_number)
+        # chunks = [['isa', 'decision', 'green', 'True', 'orange', 'True', 'between', 'True', 'action', 'select-around'],
+        #           ['isa', 'decision', 'green', 'False', 'orange', 'True', 'between', 'False', 'action', 'select-orange'],
+        #           ['isa', 'decision', 'green', 'True', 'orange', 'False', 'between', 'False', 'action', 'select-green'],
+        #           ['isa', 'decision', 'green', 'True', 'orange', 'True', 'between', 'False', 'action', 'select-orange']]
+        # #add random vectors
+        # for ck in chunks:
+        #     ck.append('vector')
+        #     random_vector = np.random.randint(100,size=256)
+        #     str1 = str(list(random_vector))
+        #     ck.append(str1)
+        #     ck.append('value_estimate')
+        #     random_number = random.uniform(0.0,10.0)
+        #     ck.append(random_number)
+
+        chunks = pickle.load(open('chunks.p','rb'))
 
         #add them to dm
         for ck in chunks:
@@ -308,6 +312,11 @@ class ActorCriticAgent:
                         between = True
             print("BETWEEN", between)
 
+        history_dict = {'green':green_beacon,'orange':orange_beacon,'blocking':between,
+                        'actr':False, 'chosen_action':'select-beacon'}
+        self.history.append(dict(history_dict))
+
+
         chunk = ['isa', 'game-state', 'wait', 'false', 'green', str(green_beacon), 'orange', str(orange_beacon),
                      'between', str(between), 'vector', str(list(args[3])), 'value_estimate', float(args[2][0]) ]
 
@@ -331,13 +340,13 @@ class ActorCriticAgent:
 
         return 1
     def cosine_similarity(self,narray1,narray2):
-        print("Cosine called.", narray1, narray2, type(narray1), type(narray2))
+        #print("Cosine called.", narray1, narray2, type(narray1), type(narray2))
         if narray1 == 'TRUE' or narray1 == 'FALSE':
             if narray1 == narray2:
-                print("cosine: returning 0")
+                #print("cosine: returning 0")
                 return 0
             else:
-                print("cosine: returning -2.5")
+                #print("cosine: returning -2.5")
                 return -2.5
         if type(narray1) == str:
             if narray1[0] == '[':
@@ -345,34 +354,40 @@ class ActorCriticAgent:
                 narray2 = np.array(eval(narray2))
 
                 ed = np.linalg.norm(narray1-narray2)
-                print("linalg",ed)
-                print("cosine: returning", max([0-ed,-2.5]))
-                return max([(0-ed),-2.5])
+                #print("linalg",ed)
+                #print("cosine: returning", max([(0-ed)/15,-2.5]))
+                return max([(0-ed)/15,-2.5])
                 #basis, s, v = svds(np.array(narray2,narray1))
                 #print(basis, s, v)
                 #print("cosine: returning ", - 1 + (1 - spatial.distance.cosine(narray1,narray2)))
                 #return -1 + (1 - spatial.distance.cosine(narray1,narray2))
         else:
             if narray1 is None:
-                print("cosine: returning 0")
+                #print("cosine: returning 0")
                 return -2.5
             if narray2 is None:
-                print("cosine: returning 0")
+                #print("cosine: returning 0")
                 return -2.5
-            print("cosine: returning ", max([-2.5,-abs(narray1-narray2)/2]))
-            return max([-2.5,-abs(narray1-narray2)/2])
+            #print("cosine: returning ", max([-2.5,-abs(float(narray1)-float(narray2))/2]))
+            return max([-2.5,-abs(float(narray1)-float(narray2))/2])
 
 
         if type(narray1) == str:
             if narray1 == narray2:
-                print("cosine: returning 0")
+                #print("cosine: returning 0")
                 return 0
-        print("cosine: returning -2.5")
+        #print("cosine: returning -2.5")
         return -2.5
 
     def set_response(self,*args):
         print("set_response:", args)
         args = list(args)
+        if len(args) >= 4:
+            production_selected = args[4]
+
+            for history in self.history:
+                if not history['actr']:
+                    history['actr'] = production_selected
 
 
 
@@ -506,6 +521,7 @@ class ActorCriticAgent:
         w = False
         #start ACT-R (after the game has started)
         if self.game_start_wait_flag:
+            self.history = []
             self.old_fc1 = None
             chk = self.actr.define_chunks(
                 ['wait', 'false'])
@@ -515,6 +531,7 @@ class ActorCriticAgent:
             actrThread = threading.Thread(target=self.actr.run, args=[100])
             actrThread.start()
             self.game_start_wait_flag = False
+
 
         #for key in obs:
         #    print("KEY", key)
@@ -549,6 +566,7 @@ class ActorCriticAgent:
 
 
         self.obs = obs
+
         w = self.push_observation([action_id,spatial_action_2d,value_estimate,fc1_narray])
         while not w:
             time.sleep(0.00001)

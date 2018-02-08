@@ -11,6 +11,8 @@ from actorcritic.agent import ActorCriticAgent, ACMode
 from actorcritic.runner import Runner, PPORunParams
 from common.multienv import SubprocVecEnv, make_sc2env, SingleEnv
 
+import pickle
+
 #import threading
 
 FLAGS = flags.FLAGS
@@ -26,7 +28,7 @@ flags.DEFINE_integer("scalar_summary_freq", 5, "Record scalar summaries every n 
 flags.DEFINE_string("checkpoint_path", "_files/models", "Path for agent checkpoints")
 flags.DEFINE_string("summary_path", "_files/summaries", "Path for tensorboard summaries")
 flags.DEFINE_string("model_name", "my_beacon_beta_model", "Name for checkpoints and tensorboard summaries")
-flags.DEFINE_integer("K_batches", 50,
+flags.DEFINE_integer("K_batches", 3,
     "Number of training batches to run in thousands, use -1 to run forever") #(MINE) not for now
 flags.DEFINE_string("map_name", "MoveToBeacon_random", "Name of a map to use.")
 flags.DEFINE_float("discount", 0.95, "Reward-discount for the agent")
@@ -175,6 +177,8 @@ def main():
             pass
 
     print("Okay. Work is done")
+
+    pickle.dump(agent.history, open("history.p","wb"))
     #_print(i)
     if FLAGS.training:
         _save_if_training(agent)
