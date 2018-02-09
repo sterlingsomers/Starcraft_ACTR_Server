@@ -340,43 +340,43 @@ class ActorCriticAgent:
 
         return 1
     def cosine_similarity(self,narray1,narray2):
-        #print("Cosine called.", narray1, narray2, type(narray1), type(narray2))
+        print("Cosine called.", narray1, narray2, type(narray1), type(narray2))
         if narray1 == 'TRUE' or narray1 == 'FALSE':
             if narray1 == narray2:
-                #print("cosine: returning 0")
+                print("cosine: returning 0")
                 return 0
             else:
-                #print("cosine: returning -2.5")
-                return -2.5
+                print("cosine: returning",-2.5/3)
+                return -2.5/3
         if type(narray1) == str:
             if narray1[0] == '[':
                 narray1 = np.array(eval(narray1))
                 narray2 = np.array(eval(narray2))
 
                 ed = np.linalg.norm(narray1-narray2)
-                #print("linalg",ed)
-                #print("cosine: returning", max([(0-ed)/15,-2.5]))
-                return max([(0-ed)/15,-2.5])
+                print("linalg",ed)
+                print("cosine: returning", max([0-(ed/15),-2.5]))
+                return max([0-(ed/15),-2.5])
                 #basis, s, v = svds(np.array(narray2,narray1))
                 #print(basis, s, v)
                 #print("cosine: returning ", - 1 + (1 - spatial.distance.cosine(narray1,narray2)))
                 #return -1 + (1 - spatial.distance.cosine(narray1,narray2))
         else:
             if narray1 is None:
-                #print("cosine: returning 0")
+                print("cosine: returning 0")
                 return -2.5
             if narray2 is None:
-                #print("cosine: returning 0")
+                print("cosine: returning 0")
                 return -2.5
-            #print("cosine: returning ", max([-2.5,-abs(float(narray1)-float(narray2))/2]))
+            print("cosine: returning ", max([-2.5,-abs(float(narray1)-float(narray2))/2]))
             return max([-2.5,-abs(float(narray1)-float(narray2))/2])
 
 
         if type(narray1) == str:
             if narray1 == narray2:
-                #print("cosine: returning 0")
+                print("cosine: returning 0")
                 return 0
-        #print("cosine: returning -2.5")
+        print("cosine: returning -2.5")
         return -2.5
 
     def set_response(self,*args):
