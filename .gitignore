@@ -99,3 +99,32 @@ ENV/
 
 # mypy
 .mypy_cache/
+/history.p
+.DS_Store
+.idea/
+Beacon_agent.py
+IBL_model.lisp~
+MoveToBeacon_2017-11-27-19-53-03.SC2Replay
+MoveToBeacon_2017-11-27-20-14-46.SC2Replay
+MoveToBeacon_2017-11-28-17-39-31.SC2Replay
+MoveToBeacon_2017-12-08-17-15-06.SC2Replay
+_files/
+actorcritic/.DS_Store
+actr.py
+analysis_data.p
+beacon_server.py
+blending-test-1.lisp
+extras/
+main_beacon.py
+model-A1.lisp
+model-A1.lisp~
+model-A3rev2.lisp
+simple_agent.py
+starcraft-A1rev3.lisp~
+starcraft-A1rev3b.lisp
+starcraft-A1rev3b.lisp~
+starcraft-A1rev3c.lisp
+starcraft-A1rev3c.lisp~
+starcraft-B1-rev1.lisp~
+starcraft-B1-rev2.lisp~
+!/history.p
