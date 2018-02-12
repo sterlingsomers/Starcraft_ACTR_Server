@@ -20,12 +20,12 @@
      ;:cache-sim-hook-results t
      :bln t    ;;added this to ensure blending was enabled, but not sure if it is actually doing anything...
      ;;some parameters moved from +actr-parameters+ in swarm model
-     :ans 0.25 ;;activation noise, default is nil, swarm was .75 (M-turkers), Christian recommended .25 as a start.
+     :ans nil;0.25 ;;activation noise, default is nil, swarm was .75 (M-turkers), Christian recommended .25 as a start.
      :tmp nil  ;;decouple noise if not nil, swarm was .7, perhaps change later.
      :mp 1   ;;partial matching enabled, default is off/nil, start high (2.5 is really high) and move to 1.
-     :bll nil; 0.5  ;;base-level learning enabled, default is off, this is the recommended value.
+     :bll nil;0.5  ;;base-level learning enabled, default is off, this is the recommended value.
      :rt -1.0 ;;retrieval threshold, default is 0, think about editing this number.
-     :blc 5    ;;base-level learning constant, default is 0, think about editing this number.
+     :blc 0;5    ;;base-level learning constant, default is 0, think about editing this number.
      :lf 0.25  ;;latency factor for retrieval times, default is 1.0, think about editing this number.
      :ol nil   ;;affects which base-level learning equation is used, default is nil; use 1 later maybe
      :md -2.5  ;;maximum difference, default similarity value between chunks, default is 1.0, maybe edit this.

@@ -346,8 +346,8 @@ class ActorCriticAgent:
                 print("cosine: returning 0")
                 return 0
             else:
-                print("cosine: returning",-2.5/3)
-                return -2.5/3
+                print("cosine: returning",-2.5/6)
+                return -2.5/6
         if type(narray1) == str:
             if narray1[0] == '[':
                 narray1 = np.array(eval(narray1))
@@ -355,8 +355,8 @@ class ActorCriticAgent:
 
                 ed = np.linalg.norm(narray1-narray2)
                 print("linalg",ed)
-                print("cosine: returning", max([0-(ed/15),-2.5]))
-                return max([0-(ed/15),-2.5])
+                print("cosine: returning", max([0-(ed/12),-2.5]))
+                return max([0-(ed/12),-2.5])
                 #basis, s, v = svds(np.array(narray2,narray1))
                 #print(basis, s, v)
                 #print("cosine: returning ", - 1 + (1 - spatial.distance.cosine(narray1,narray2)))
@@ -373,6 +373,10 @@ class ActorCriticAgent:
 
 
         if type(narray1) == str:
+            if 'SELECT' in narray1 and 'SELECT' in narray2:
+                if narray1 != narray2:
+                    print("cosine: returning -0.75")
+                    return -0.75
             if narray1 == narray2:
                 print("cosine: returning 0")
                 return 0
