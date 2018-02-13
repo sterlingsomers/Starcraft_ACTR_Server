@@ -18,7 +18,7 @@
 (sgp :esc t    ;;set to t to use subsymbolic computations
      :sim-hook "cosine-similarity" 
      ;:cache-sim-hook-results t
-     :bln t    ;;added this to ensure blending was enabled, but not sure if it is actually doing anything...
+     ;:bln t    ;;added this to ensure blending was enabled, but not sure if it is actually doing anything...
      ;;some parameters moved from +actr-parameters+ in swarm model
      :ans nil;0.25 ;;activation noise, default is nil, swarm was .75 (M-turkers), Christian recommended .25 as a start.
      :tmp nil  ;;decouple noise if not nil, swarm was .7, perhaps change later.
@@ -172,12 +172,8 @@
   
    =goal>
        state      do_action
-   =imaginal>
-       green      nil
-       orange     nil
-       between    nil
-       vector     nil
-       value_estimate nil
+   @imaginal>
+
        action     =action
        wait       false
 

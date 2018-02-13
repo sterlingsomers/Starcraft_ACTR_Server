@@ -375,8 +375,8 @@ class ActorCriticAgent:
         if type(narray1) == str:
             if 'SELECT' in narray1 and 'SELECT' in narray2:
                 if narray1 != narray2:
-                    print("cosine: returning -0.75")
-                    return -0.75
+                    print("cosine: returning -0.5")
+                    return -0.5
             if narray1 == narray2:
                 print("cosine: returning 0")
                 return 0
