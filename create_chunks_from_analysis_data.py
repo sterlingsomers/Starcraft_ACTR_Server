@@ -27,7 +27,7 @@ viables = []
 history.reverse()
 minimum_distance = 100
 step = 1
-max_cases = 20
+max_cases = 5
 
 while minimum_distance >= 0:
     for case in history:

@@ -138,6 +138,7 @@ class ActorCriticAgent:
         self.actr.add_command("set_response", self.set_response)
         self.actr.add_command("RHSWait", self.RHSWait)
         self.actr.add_command("GameStartWait", self.game_start_wait)
+        self.actr.add_command("Blend", self.blend)
 
 
 
@@ -150,6 +151,7 @@ class ActorCriticAgent:
         self.stepped = False
         self.obs = None
         self.actrChunks = []
+        self.dict_dm = {}
 
         #Add some chunks to DM
         # chunks = [['isa', 'decision', 'green', 'True', 'orange', 'True', 'between', 'True', 'action', 'select-around'],
@@ -170,7 +172,21 @@ class ActorCriticAgent:
 
         #add them to dm
         for ck in chunks:
-            actr.add_dm(ck)
+            self.actr.add_dm(ck)
+
+        #organize those chunks into categories (dict)
+        #for use when filtering durig "Blend" command
+        self.dict_dm = {('TRUE','FALSE','FALSE','SELECT-BEACON'):[],
+                        ('FALSE','TRUE','FALSE','SELECT-BEACON'):[],
+                        ('TRUE','TRUE','FALSE','SELECT-BEACON'):[],
+                        ('TRUE','TRUE','TRUE','SELECT-BEACON'):[],
+                        ('TRUE','TRUE','TRUE','SELECT-AROUND'):[]}
+        for ck in chunks:
+            keys = (ck[3].upper(),
+                    ck[5].upper(),
+                    ck[7].upper(),
+                    ck[13].upper())
+            self.dict_dm[keys].append(ck[11])
 
 
 
@@ -231,6 +247,55 @@ class ActorCriticAgent:
     def distance(self,a,b):
         '''duh. distance betweeen a and b'''
         pass
+
+    def blend(self):
+        #narray1 = np.array(eval(narray1))
+        #narray2 = np.array(eval(narray2))
+        #ed = np.linalg.norm(narray1 - narray2)
+        print("blend called")
+        current_blending_chunk = self.actr.buffer_read('blending')
+        values = []
+        smallest_distance = 10000
+        distance_threshold = 18
+        ed = smallest_distance + 1
+        for x in ('green','orange','between','action','vector','value_estimate'):
+            values.append(self.actr.chunk_slot_value(current_blending_chunk,x))
+        values = tuple(values)
+        if len(self.dict_dm[values[0:4]]) >= 5:
+            return 1
+
+        if not self.dict_dm[values[0:4]]:
+            self.dict_dm[values[0:4]].append(values[4])
+            chk = ['isa', 'decision',
+                   'green', values[0],
+                   'orange', values[1],
+                   'between', values[2],
+                   'vector', values[4],
+                   'value_estimate', values[5],
+                   'action', values[3]]
+            self.actr.add_dm(chk)
+            return 1
+        narray1 = np.array(eval(values[4]))
+        for vector_string in self.dict_dm[values[0:4]]:
+            narray2 = np.array(eval(vector_string))
+            ed = np.linalg.norm(narray1 - narray2)
+            if ed < smallest_distance:
+                smallest_distance = ed
+            print("blend",ed)
+
+        if smallest_distance < distance_threshold:
+            self.dict_dm[values[0:4]].append(values[4])
+            chk = ['isa', 'decision',
+                   'green',values[0],
+                   'orange',values[1],
+                   'between',values[2],
+                   'vector',values[4],
+                   'value_estimate',values[5],
+                   'action',values[3]]
+            self.actr.add_dm(chk)
+
+
+
 
     def RHSWait(self):
         print("RHSWwait called, flag set to True")

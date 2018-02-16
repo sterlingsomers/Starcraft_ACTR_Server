@@ -172,10 +172,12 @@
   
    =goal>
        state      do_action
+   @blending>
    @imaginal>
-
        action     =action
        wait       false
+
+   !eval! ("Blend")
 
 )
 
