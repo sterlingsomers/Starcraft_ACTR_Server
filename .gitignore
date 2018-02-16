@@ -106,6 +106,7 @@ Beacon_agent.py
 analysis_data.p
 analysis_data_100_random.p
 chunks.p
+history.p
 IBL_model.lisp~
 MoveToBeacon_2017-11-27-19-53-03.SC2Replay
 MoveToBeacon_2017-11-27-20-14-46.SC2Replay
