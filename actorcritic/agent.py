@@ -283,7 +283,7 @@ class ActorCriticAgent:
                 smallest_distance = ed
             print("blend",ed)
 
-        if smallest_distance < distance_threshold:
+        if smallest_distance > distance_threshold:
             self.dict_dm[values[0:4]].append(values[4])
             chk = ['isa', 'decision',
                    'green',values[0],
@@ -378,7 +378,7 @@ class ActorCriticAgent:
             print("BETWEEN", between)
 
         history_dict = {'green':green_beacon,'orange':orange_beacon,'blocking':between,
-                        'actr':False, 'chosen_action':'select-beacon'}
+                        'actr':False, 'chosen_action':'select_beacon'}
         self.history.append(dict(history_dict))
 
 
@@ -597,7 +597,7 @@ class ActorCriticAgent:
 
             self.actr.schedule_simple_event_now("set-buffer-chunk",
                                                 ['imaginal', chk[0]])  # self.actr.set_buffer_chunk('imaginal',chk[0])
-            actrThread = threading.Thread(target=self.actr.run, args=[100])
+            actrThread = threading.Thread(target=self.actr.run, args=[1000])
             actrThread.start()
             self.game_start_wait_flag = False
 
