@@ -601,7 +601,7 @@ class ActorCriticAgent:
             actrThread.start()
             self.game_start_wait_flag = False
 
-
+        #
         #for key in obs:
         #    print("KEY", key)
         #insert some ACTR things
