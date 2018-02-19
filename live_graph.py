@@ -3,7 +3,7 @@ import run_agent
 
 #for the graphs
 
-
+import numpy as np
 
 import matplotlib as mpl
 mpl.use("TkAgg")
@@ -14,14 +14,18 @@ import threading
 
 
 #style.use('fivethirtyeight')
-fig = plt.figure()
-ax1 = fig.add_subplot(211)
-ax1.set_ylim([0,1])
+fig, (ax1,ax2,ax3,ax4) = plt.subplots(4)
+
+#fig = plt.figure()
+#ax1 = fig.add_subplot(211)
+#ax1.set_ylim(bottom=0,top=1,auto=False)
+#ax1.set_xlim([0,1],auto=False)
 
 #fig2 = plt.figure()
-ax2 = fig.add_subplot(212)
+#ax2 = fig.add_subplot(212)
 
 
+#ax3 = fig.add_subplot(3,3,3)
 
 
 
@@ -100,29 +104,21 @@ def animate(i):
     ax1.plot(yps, xps)
 
 
+    if type(run_agent.agent.fc1) == int:
+        return
 
+    #print("agent",run_agent.agent.fc1)
+    fc1 = np.array(run_agent.agent.fc1)
+    fc1 = fc1.reshape((16,16))
+    #print("fc1", fc1,fc1.shape)
 
-    # if not run_agent.agent:
-    #     ax1.clear()
-    #     ax1.plot([0,1,2], [0,5,7])
-    #     return
-    # if not run_agent.agent.history:
-    #     ax1.clear()
-    #     ax1.plot([1], [1])
-    #     return
-
-    # history = run_agent.agent.history
-    # xs = []
-    # ys = []
+    ax3.clear()
+    ax3.matshow(fc1)
 
 
 
-    # for case in history:
-    #     if case['green'] and case['orange'] and case['blocking']:
-    #         if case['actr'] == case['chosen_action']:
-    #             xs.append(1)
-    #         else:
-    #             xs.append(0)
+    #print("fc1",run_agent.agent.fc1)
+#        run_agent.agent.fc1 = run_agent.agent.fc1.reshape((16,16))
 
 
 
@@ -136,7 +132,7 @@ if __name__ == "__main__":
     run_thread.start()
 
     print("thread started")
-    ani = animation.FuncAnimation(fig, animate, interval=500)
+    ani = animation.FuncAnimation(fig, animate, interval=200)
     plt.show()
 
 

@@ -141,7 +141,8 @@ class ActorCriticAgent:
         self.actr.add_command("Blend", self.blend)
 
 
-
+        #network activity
+        self.fc1 = 0
 
         #some act-r items
         self.tickable = False
@@ -629,6 +630,7 @@ class ActorCriticAgent:
         ).transpose()
 
         fc1 = self.sess.run(self.theta.fc1, feed_dict=feed_dict)
+        self.fc1 = fc1
         fc1_narray = np.array(fc1)[0]
         #print("FC1",self.cosine_similarity(fc1_narray, self.old_fc1))
         self.old_fc1 = fc1_narray
