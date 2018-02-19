@@ -152,6 +152,7 @@ class ActorCriticAgent:
         self.obs = None
         self.actrChunks = []
         self.dict_dm = {}
+        self.history = []
 
         #Add some chunks to DM
         # chunks = [['isa', 'decision', 'green', 'True', 'orange', 'True', 'between', 'True', 'action', 'select-around'],
@@ -378,7 +379,7 @@ class ActorCriticAgent:
             print("BETWEEN", between)
 
         history_dict = {'green':green_beacon,'orange':orange_beacon,'blocking':between,
-                        'actr':False, 'chosen_action':'select_beacon'}
+                        'actr':False, 'chosen_action':'select_beacon'.upper()}
         self.history.append(dict(history_dict))
 
 
@@ -456,7 +457,7 @@ class ActorCriticAgent:
 
             for history in self.history:
                 if not history['actr']:
-                    history['actr'] = production_selected
+                    history['actr'] = production_selected.upper()
 
 
 
@@ -597,7 +598,7 @@ class ActorCriticAgent:
 
             self.actr.schedule_simple_event_now("set-buffer-chunk",
                                                 ['imaginal', chk[0]])  # self.actr.set_buffer_chunk('imaginal',chk[0])
-            actrThread = threading.Thread(target=self.actr.run, args=[1000])
+            actrThread = threading.Thread(target=self.actr.run, args=[300])
             actrThread.start()
             self.game_start_wait_flag = False
 

@@ -10,6 +10,10 @@ from common.util import calculate_n_step_reward, general_n_step_advantage, combi
 import tensorflow as tf
 from absl import flags
 
+
+
+
+
 PPORunParams = namedtuple("PPORunParams", ["lambda_par", "batch_size", "n_epochs"])
 
 
@@ -132,6 +136,9 @@ class Runner(object):
         latest_obs = self.latest_obs # (MINE) =state(t)
         # action = agent(state)
         action_ids, spatial_action_2ds, value_estimate = self.agent.step(latest_obs) # (MINE) AGENT STEP = INPUT TO NN THE CURRENT STATE AND OUTPUT ACTION
+
+
+
         print('action: ', actions.FUNCTIONS[action_ids[0]].name, 'on', 'x=', spatial_action_2ds[0][0], 'y=', spatial_action_2ds[0][1], 'Value=', value_estimate[0])
         actions_pp = self.action_processer.process(action_ids, spatial_action_2ds)
         # state(t+1) = env.step(action)

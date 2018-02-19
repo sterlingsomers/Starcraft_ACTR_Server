@@ -23,6 +23,7 @@ print("done.")
 sum = 0
 num = 0
 proportion_correct = 0
+print(xs, len(xs))
 for x in xs:
     num += 1
     sum += x

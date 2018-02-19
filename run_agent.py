@@ -20,7 +20,7 @@ flags.DEFINE_bool("visualize", False, "Whether to render with pygame.")
 flags.DEFINE_integer("resolution", 32, "Resolution for screen and minimap feature layers.")
 flags.DEFINE_integer("step_mul", 8, "Game steps per agent step.")
 flags.DEFINE_integer("n_envs", 1, "Number of environments to run in parallel")
-flags.DEFINE_integer("episodes", 10, "Number of complete episodes")
+flags.DEFINE_integer("episodes", 2, "Number of complete episodes")
 flags.DEFINE_integer("n_steps_per_batch", None,
     "Number of steps per batch, if None use 8 for a2c and 128 for ppo")  # (MINE) TIMESTEPS HERE!!!
 flags.DEFINE_integer("all_summary_freq", 50, "Record all summaries every n batch")
@@ -48,6 +48,8 @@ flags.DEFINE_integer("ppo_epochs", 3, "epochs per update")
 flags.DEFINE_enum("agent_mode", ACMode.A2C, [ACMode.A2C, ACMode.PPO], "if should use A2C or PPO")
 
 FLAGS(sys.argv)
+
+agent = 0
 
 #TODO this runner is maybe too long and too messy..
 full_chekcpoint_path = os.path.join(FLAGS.checkpoint_path, FLAGS.model_name)
@@ -101,7 +103,7 @@ def main():
 
     tf.reset_default_graph()
     sess = tf.Session()
-
+    global agent
     agent = ActorCriticAgent(
         mode=FLAGS.agent_mode,
         sess=sess,
@@ -178,7 +180,7 @@ def main():
 
     print("Okay. Work is done")
 
-    pickle.dump(agent.history, open("history.p","wb"))
+    #pickle.dump(agent.history, open("history.p","wb"))
     #_print(i)
     if FLAGS.training:
         _save_if_training(agent)
