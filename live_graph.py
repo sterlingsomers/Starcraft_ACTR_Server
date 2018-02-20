@@ -14,7 +14,7 @@ import threading
 
 
 #style.use('fivethirtyeight')
-fig, (ax1,ax2,ax3,ax4) = plt.subplots(4)
+fig, (ax1,ax2,ax3) = plt.subplots(3)
 
 #fig = plt.figure()
 #ax1 = fig.add_subplot(211)
