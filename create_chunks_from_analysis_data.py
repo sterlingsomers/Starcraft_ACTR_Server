@@ -15,7 +15,7 @@ from sklearn import svm
 
 chunks = []
 
-history = pickle.load(open('analysis_data_100_random.p',"rb"))
+history = pickle.load(open('analysis_data_test.p',"rb"))
 print(type(history))
 print(len(history))
 current = None
