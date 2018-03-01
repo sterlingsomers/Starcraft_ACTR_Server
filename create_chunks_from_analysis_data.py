@@ -169,9 +169,15 @@ for case in viables:
     if case['green'] and case['orange'] and case['blocking']:
         ck.append('action')
         ck.append('select-around')
-    else:
+    elif case['green'] and case['orange'] and not case['blocking']:
         ck.append('action')
-        ck.append('select-beacon')
+        ck.append('select-orange')
+    elif case['green'] and not case['orange'] and not case['blocking']:
+        ck.append('action')
+        ck.append('select-green')
+    elif not case['green'] and case['orange'] and not case['blocking']:
+        ck.append('action')
+        ck.append('select-orange')
     chunks.append(ck.copy())
 
 
