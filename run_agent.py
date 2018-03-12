@@ -20,7 +20,7 @@ flags.DEFINE_bool("visualize", False, "Whether to render with pygame.")
 flags.DEFINE_integer("resolution", 32, "Resolution for screen and minimap feature layers.")
 flags.DEFINE_integer("step_mul", 8, "Game steps per agent step.")
 flags.DEFINE_integer("n_envs", 1, "Number of environments to run in parallel")
-flags.DEFINE_integer("episodes", 1, "Number of complete episodes")
+flags.DEFINE_integer("episodes", 10, "Number of complete episodes")
 flags.DEFINE_integer("n_steps_per_batch", None,
     "Number of steps per batch, if None use 8 for a2c and 128 for ppo")  # (MINE) TIMESTEPS HERE!!!
 flags.DEFINE_integer("all_summary_freq", 50, "Record all summaries every n batch")
@@ -28,7 +28,7 @@ flags.DEFINE_integer("scalar_summary_freq", 5, "Record scalar summaries every n 
 flags.DEFINE_string("checkpoint_path", "_files/models", "Path for agent checkpoints")
 flags.DEFINE_string("summary_path", "_files/summaries", "Path for tensorboard summaries")
 flags.DEFINE_string("model_name", "my_beacon_beta_model", "Name for checkpoints and tensorboard summaries")
-flags.DEFINE_integer("K_batches", 3,
+flags.DEFINE_integer("K_batches", 10,
     "Number of training batches to run in thousands, use -1 to run forever") #(MINE) not for now
 flags.DEFINE_string("map_name", "MoveToBeacon_random", "Name of a map to use.")
 flags.DEFINE_float("discount", 0.95, "Reward-discount for the agent")
@@ -49,7 +49,11 @@ flags.DEFINE_enum("agent_mode", ACMode.A2C, [ACMode.A2C, ACMode.PPO], "if should
 
 FLAGS(sys.argv)
 
+file_name_count = 15
 agent = 0
+
+
+
 
 #TODO this runner is maybe too long and too messy..
 full_chekcpoint_path = os.path.join(FLAGS.checkpoint_path, FLAGS.model_name)
@@ -179,16 +183,30 @@ def main():
             pass
 
     print("Okay. Work is done")
-
-    #pickle.dump(agent.history, open("history.p","wb"))
+    history_file = 'history' + repr(file_name_count) + '.p'
+    dict_dm_file = 'dict_dm' + repr(file_name_count) + '.p'
+    pickle.dump(agent.history, open(history_file,"wb"))
+    pickle.dump(agent.dict_dm, open(dict_dm_file,"wb"))
     #_print(i)
     if FLAGS.training:
         _save_if_training(agent)
     if not FLAGS.training:
-        envs.env.save_replay('/Users/constantinos/Documents/StarcraftMAC/MyAgents/')
+        pass
+        #envs.env.save_replay('/Users/paulsomers/StarcraftMAC/MyAgents/')
 
     envs.close()
 
+
+    agent.RHSWaitFlag = False
+    chunk = ['stop', 'true']
+
+    chk = agent.actr.define_chunks(chunk)
+    agent.actr.schedule_simple_event_now("set-buffer-chunk", ['imaginal', chk[0]])
+    agent.RHSWaitFlag = False
+    agent.actr.schedule_simple_event_now("set-buffer-chunk", ['imaginal', chk[0]])
+    agent.RHSWaitFlag = False
+    agent.actr.schedule_simple_event_now("set-buffer-chunk", ['imaginal', chk[0]])
+    agent.RHSWaitFlag = False
 
 if __name__ == "__main__":
     main()

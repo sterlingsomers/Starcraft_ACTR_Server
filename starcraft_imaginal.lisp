@@ -17,7 +17,7 @@
 
 (sgp :esc t    ;;set to t to use subsymbolic computations
      :sim-hook "cosine-similarity"
-     :act t 
+     :act nil;t 
      ;:cache-sim-hook-results t
      ;:bln t    ;;added this to ensure blending was enabled, but not sure if it is actually doing anything...
      ;;some parameters moved from +actr-parameters+ in swarm model
@@ -34,9 +34,9 @@
      ;:imaginal-activation 1.0 ;;set imaginal activation to 0.0 for spreading activation
      ;:mas 1.0 ;;spreading activation
      ;;back to some parameters in the original sgp here
-     :v t      ;;set to nil to turn off model output
-     :blt t    ;;set to nil to turn off blending trace
-     :trace-detail high ;;lower this as needed, start at high for initial debugging.
+     :v nil;t      ;;set to nil to turn off model output
+     :blt nil;t    ;;set to nil to turn off blending trace
+     :trace-detail low;high ;;lower this as needed, start at high for initial debugging.
      :style-warnings t  ;;set to nil to turn off production warnings, start at t for initial debugging.
      ) ;;end sgp
 
@@ -44,7 +44,7 @@
 (chunk-type initialize state)
 (chunk-type decision green orange between vector value_estimate action)
 (chunk-type action value)
-(chunk-type game-state value)
+(chunk-type game-state green orange between vector value_estimate)
 ;(chunk-type green isa color value green)
 ;(chunk-tupe orange isa color value orange)
 
@@ -69,7 +69,7 @@
    ==>
    =goal>
        state      check-neutrals
-   =imaginal>
+   @imaginal>
        green      nil
        orange     nil
        between    nil
@@ -81,7 +81,13 @@
    ;!eval! (format t "msg")
 )
 
-
+(P end
+   =imaginal>
+       stop       true
+==>
+   -imaginal>
+   -goal>
+)
 
 (P wait
    =imaginal>
@@ -105,23 +111,7 @@
 ;;should be happening between tics
 
 
-;(P click-beacon
-;   =goal>
-;       ISA        initialize
-;       state      check-neutrals
-;   =imaginal>
-;       neutral_x  =nx
-;       neutral_y  =ny
-;    -  wait       true
-;   ==>
-;   =goal>
-;;       state      none
-;   =imaginal>
-;       wait       true
-;   ;-imaginal>
-;
-;   !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" =nx =ny )
-;)
+
 
 (P click-part-two
    =goal>
@@ -135,25 +125,22 @@
        vector     =vector
        value_estimate =value_estimate
      - wait       true
-   ?blending>
+   ?retrieval>
        state      free
+       buffer     empty
+     - state      error
 ==>
-   +blending>
+   +retrieval>
        isa        decision ;notice the change from game-state to decision
-       green      =green
-       orange     =orange
-       between    =between
+       ;green      =green
+       ;orange     =orange
+       ;between    =between
        vector     =vector
-       value_estimate =value_estimate
-       :ignore-slots (wait)
+       ;value_estimate =value_estimate
+       ;:ignore-slots (wait)
+     - action     nil
        ;:do-not-generalize (green orange between vector value_estimate)
    =imaginal>
-       green      nil
-       orange     nil
-       between    nil
-       vector     nil
-       value_estimate nil
-       wait       false
    =goal>
        state      get_action
 )
@@ -162,28 +149,59 @@
    =goal>
        isa        initialize
        state      get_action
-   =blending>
+   =retrieval>
+       isa        decision
+       green      =green_r
+       orange     =orange_r
+       between    =between_r
+       vector     =vector_r
+       value_estimate =value_estimate_r
+       action     =action_r
+   =imaginal>
        isa        decision
        green      =green
        orange     =orange
        between    =between
        vector     =vector
        value_estimate =value_estimate
-       action     =action
-   =imaginal>
-   ?blending>
-       state      free
+
+   
 ==>
   
    =goal>
-       state      do_action
-   @blending>
+       state      store_instance
+   @retrieval>
    @imaginal>
-       action     =action
-       wait       false
+       isa        decision
+       green      =green
+       orange     =orange
+       between    =between
+       vector     =vector
+       value_estimate =value_estimate
+       action     =action_r
+       ;wait       nil
 
-   !eval! ("Blend")
+   ;!eval! ("Blend")
 
+)
+
+(P store_instance
+  =goal>
+      state        store_instance
+  =imaginal>
+      isa          decision
+      green        =green
+      orange       =orange
+      between      =between
+      vector       =vector
+      value_estimate =value_estimate
+      action       =action
+==>
+  =goal>
+      state        do_action
+  =imaginal>
+
+  !eval! ("Blend")
 )
 
 (P select-green

@@ -105,23 +105,7 @@
 ;;should be happening between tics
 
 
-;(P click-beacon
-;   =goal>
-;       ISA        initialize
-;       state      check-neutrals
-;   =imaginal>
-;       neutral_x  =nx
-;       neutral_y  =ny
-;    -  wait       true
-;   ==>
-;   =goal>
-;;       state      none
-;   =imaginal>
-;       wait       true
-;   ;-imaginal>
-;
-;   !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" =nx =ny )
-;)
+
 
 (P click-part-two
    =goal>
@@ -135,17 +119,19 @@
        vector     =vector
        value_estimate =value_estimate
      - wait       true
-   ?blending>
+   ?retrieval>
        state      free
+       buffer     empty
+     - state      error
 ==>
-   +blending>
+   +retrieval>
        isa        decision ;notice the change from game-state to decision
-       green      =green
-       orange     =orange
-       between    =between
+       ;green      =green
+       ;orange     =orange
+       ;between    =between
        vector     =vector
-       value_estimate =value_estimate
-       :ignore-slots (wait)
+       ;value_estimate =value_estimate
+       ;:ignore-slots (wait)
        ;:do-not-generalize (green orange between vector value_estimate)
    =imaginal>
        green      nil
@@ -162,7 +148,7 @@
    =goal>
        isa        initialize
        state      get_action
-   =blending>
+   =retrieval>
        isa        decision
        green      =green
        orange     =orange
@@ -171,16 +157,19 @@
        value_estimate =value_estimate
        action     =action
    =imaginal>
-   ?blending>
-       state      free
+   
 ==>
   
    =goal>
        state      do_action
-   @blending>
-   @imaginal>
+   =imaginal>
+       isa        decision
+       green      =green
+       orange     =orange
+       between    =between
+       vector     =vector
+       value_estimate =value_estimate
        action     =action
-       wait       false
 
    !eval! ("Blend")
 

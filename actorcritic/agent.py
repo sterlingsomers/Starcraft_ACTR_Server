@@ -18,7 +18,7 @@ import math
 import time
 import threading
 import random
-
+import itertools
 import pickle
 
 
@@ -132,7 +132,7 @@ class ActorCriticAgent:
         #load the ACT-R model
         self.actr = actr
         self.actr.add_command("cosine-similarity", self.cosine_similarity, "similarity hook function")
-        self.actr.load_act_r_model("/Users/paulsomers/StarcraftMAC/MyAgents/starcraft-B1-rev2.lisp")
+        self.actr.load_act_r_model("/Users/paulsomers/StarcraftMAC/MyAgents/starcraft_imaginal.lisp")
         self.actr.add_command("tic", self.do_tic)
         self.actr.add_command("ignore", self.ignore)
         self.actr.add_command("set_response", self.set_response)
@@ -153,6 +153,7 @@ class ActorCriticAgent:
         self.obs = None
         self.actrChunks = []
         self.dict_dm = {}
+        self.distances = []
         self.history = []
 
         #Add some chunks to DM
@@ -178,17 +179,33 @@ class ActorCriticAgent:
 
         #organize those chunks into categories (dict)
         #for use when filtering durig "Blend" command
-        self.dict_dm = {('TRUE','FALSE','FALSE','SELECT-BEACON'):[],
-                        ('FALSE','TRUE','FALSE','SELECT-BEACON'):[],
-                        ('TRUE','TRUE','FALSE','SELECT-BEACON'):[],
-                        ('TRUE','TRUE','TRUE','SELECT-BEACON'):[],
-                        ('TRUE','TRUE','TRUE','SELECT-AROUND'):[]}
+        self.dict_dm = {('TRUE','FALSE','FALSE','SELECT-GREEN'):[],
+                        ('FALSE','TRUE','FALSE','SELECT-ORANGE'):[],
+                        ('TRUE','TRUE','FALSE','SELECT-ORANGE'):[],
+                        ('TRUE','TRUE','TRUE','SELECT-ORANGE'):[],
+                        ('TRUE','TRUE','TRUE','SELECT-AROUND'):[],
+                        #all other possibilties have to be accounted for
+                        ('TRUE', 'FALSE', 'FALSE', 'SELECT-ORANGE'):[],
+                        ('FALSE', 'TRUE', 'FALSE', 'SELECT-GREEN'):[],
+                        ('TRUE', 'TRUE', 'FALSE', 'SELECT-GREEN'):[],
+                        ('TRUE', 'TRUE', 'TRUE', 'SELECT-GREEN'):[],
+                        ('TRUE', 'FALSE', 'FALSE', 'SELECT-AROUND'): [],
+                        ('FALSE', 'TRUE', 'FALSE', 'SELECT-AROUND'): [],
+                        ('TRUE', 'TRUE', 'FALSE', 'SELECT-AROUND'): []}
         for ck in chunks:
             keys = (ck[3].upper(),
                     ck[5].upper(),
                     ck[7].upper(),
                     ck[13].upper())
             self.dict_dm[keys].append(ck[11])
+
+        self.vectors = [ck[11] for ck in chunks]
+        for a,b in itertools.combinations(self.vectors,2):
+            narray1 = np.array(eval(a))
+            narray2 = np.array(eval(b))
+            ed = np.linalg.norm(narray1 - narray2)
+            self.distances.append(ed)
+        self.distances = [max(self.distances),min(self.distances)]
 
 
 
@@ -255,10 +272,10 @@ class ActorCriticAgent:
         #narray2 = np.array(eval(narray2))
         #ed = np.linalg.norm(narray1 - narray2)
         print("blend called")
-        current_blending_chunk = self.actr.buffer_read('blending')
+        current_blending_chunk = self.actr.buffer_read('imaginal')
         values = []
         smallest_distance = 10000
-        distance_threshold = 18
+        distance_threshold = min(self.distances)
         ed = smallest_distance + 1
         for x in ('green','orange','between','action','vector','value_estimate'):
             values.append(self.actr.chunk_slot_value(current_blending_chunk,x))
@@ -276,6 +293,15 @@ class ActorCriticAgent:
                    'value_estimate', values[5],
                    'action', values[3]]
             self.actr.add_dm(chk)
+            # add the distance for proper scaling
+            distances = []
+            for vector_string in self.vectors:
+                vector1 = np.array(eval(vector_string))
+                vector2 = np.array(eval(values[4]))
+                ed = np.linalg.norm(vector1 - vector2)
+                self.distances.append(ed)
+            self.vectors.append(values[4])
+            self.distances = [max(self.distances), min(self.distances)]
             return 1
         narray1 = np.array(eval(values[4]))
         for vector_string in self.dict_dm[values[0:4]]:
@@ -295,6 +321,15 @@ class ActorCriticAgent:
                    'value_estimate',values[5],
                    'action',values[3]]
             self.actr.add_dm(chk)
+            #add the distance for proper scaling
+            distances = []
+            for vector_string in self.vectors:
+                vector1 = np.array(eval(vector_string))
+                vector2 = np.array(eval(values[4]))
+                ed = np.linalg.norm(vector1 - vector2)
+                self.distances.append(ed)
+            self.vectors.append(values[4])
+            self.distances = [max(self.distances),min(self.distances)]
 
 
 
@@ -380,7 +415,12 @@ class ActorCriticAgent:
             print("BETWEEN", between)
 
         history_dict = {'green':green_beacon,'orange':orange_beacon,'blocking':between,
-                        'actr':False, 'chosen_action':'select_beacon'.upper()}
+                        'actr':False}## , 'chosen_action':'select_beacon'.upper()}
+        if orange_beacon:
+            history_dict['chosen_action'] = 'select_orange'.upper()
+        else:
+            history_dict['chosen_action'] = 'select_green'.upper()
+
         self.history.append(dict(history_dict))
 
 
@@ -407,14 +447,14 @@ class ActorCriticAgent:
 
         return 1
     def cosine_similarity(self,narray1,narray2):
-        print("Cosine called.", narray1, narray2, type(narray1), type(narray2))
+        #print("Cosine called.", narray1, narray2, type(narray1), type(narray2))
         if narray1 == 'TRUE' or narray1 == 'FALSE':
             if narray1 == narray2:
-                print("cosine: returning 0")
-                return 0
+                print("cosine: returning (binary) 0")
+                return -0.001
             else:
-                print("cosine: returning",-2.5/6)
-                return -2.5/6
+                print("cosine: returning (binary) 0, not",-2.5/6)
+                return -0.001#-2.5/6
         if type(narray1) == str:
             if narray1[0] == '[':
                 narray1 = np.array(eval(narray1))
@@ -422,31 +462,34 @@ class ActorCriticAgent:
 
                 ed = np.linalg.norm(narray1-narray2)
                 print("linalg",ed)
-                print("cosine: returning", max([0-(ed/12),-2.5]))
-                return max([0-(ed/12),-2.5])
+                #print("cosine: returning (vec)", max([0-(ed/15),-2.5]))
+                val =  ( (ed - min(self.distances)) / (max(self.distances) - min(self.distances))) * (1 - 0) + 0
+                print("cosine: returning (vec)", 0-val)
+                return 0 - val
+                #return 0 - ed#max([0-(ed),-2.5])
                 #basis, s, v = svds(np.array(narray2,narray1))
                 #print(basis, s, v)
                 #print("cosine: returning ", - 1 + (1 - spatial.distance.cosine(narray1,narray2)))
                 #return -1 + (1 - spatial.distance.cosine(narray1,narray2))
         else:
             if narray1 is None:
-                print("cosine: returning 0")
+                print("cosine: returning (none) 0")
                 return -2.5
             if narray2 is None:
-                print("cosine: returning 0")
+                print("cosine: returning (None) 0")
                 return -2.5
-            print("cosine: returning ", max([-2.5,-abs(float(narray1)-float(narray2))/2]))
-            return max([-2.5,-abs(float(narray1)-float(narray2))/2])
+            print("cosine: returning (VE) 0, not", max([-2.5,-abs(float(narray1)-float(narray2))/2]))
+            return -0.001#max([-2.5,-abs(float(narray1)-float(narray2))/2])
 
 
         if type(narray1) == str:
             if 'SELECT' in narray1 and 'SELECT' in narray2:
                 if narray1 != narray2:
-                    print("cosine: returning -0.5")
-                    return -0.5
+                    print("cosine: returning (select) -0.0")
+                    return -0.001
             if narray1 == narray2:
                 print("cosine: returning 0")
-                return 0
+                return -0.001
         print("cosine: returning -2.5")
         return -2.5
 
@@ -599,7 +642,7 @@ class ActorCriticAgent:
 
             self.actr.schedule_simple_event_now("set-buffer-chunk",
                                                 ['imaginal', chk[0]])  # self.actr.set_buffer_chunk('imaginal',chk[0])
-            actrThread = threading.Thread(target=self.actr.run, args=[300])
+            actrThread = threading.Thread(target=self.actr.run, args=[1000])
             actrThread.start()
             self.game_start_wait_flag = False
 
