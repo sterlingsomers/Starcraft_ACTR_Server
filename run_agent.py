@@ -183,8 +183,8 @@ def main():
             pass
 
     print("Okay. Work is done")
-    history_file = 'history' + repr(file_name_count) + '.p'
-    dict_dm_file = 'dict_dm' + repr(file_name_count) + '.p'
+    history_file = 'history_b' + repr(file_name_count) + '.p'
+    dict_dm_file = 'dict_dm_b' + repr(file_name_count) + '.p'
     pickle.dump(agent.history, open(history_file,"wb"))
     pickle.dump(agent.dict_dm, open(dict_dm_file,"wb"))
     #_print(i)

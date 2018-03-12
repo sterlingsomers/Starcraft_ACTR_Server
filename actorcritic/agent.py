@@ -416,10 +416,14 @@ class ActorCriticAgent:
 
         history_dict = {'green':green_beacon,'orange':orange_beacon,'blocking':between,
                         'actr':False}## , 'chosen_action':'select_beacon'.upper()}
-        if orange_beacon:
-            history_dict['chosen_action'] = 'select_orange'.upper()
-        else:
+        if orange_beacon and green_beacon and between:#blocking
+            history_dict['chosen_action'] = 'select_around'.upper()
+        elif green_beacon and not orange_beacon and not between:#green-only
             history_dict['chosen_action'] = 'select_green'.upper()
+        elif not green_beacon and orange_beacon and not between:#orange-only
+            history_dict['chosen_action'] = 'select_orange'.upper()
+        elif green_beacon and orange_beacon and not between:#non-blocking
+            history_dict['chosen_action'] = 'select_orange'.upper()
 
         self.history.append(dict(history_dict))
 
