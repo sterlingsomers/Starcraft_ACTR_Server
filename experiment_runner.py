@@ -5,7 +5,7 @@ import actr
 
 run_agent = importlib.import_module('run_agent')
 
-for x in range(20,40):
+for x in range(0,50):
     run_agent.file_name_count = x
     t = run_agent.main()
     #run_agent.agent.actr.stop()

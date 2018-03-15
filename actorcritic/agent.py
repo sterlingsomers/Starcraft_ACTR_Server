@@ -280,9 +280,12 @@ class ActorCriticAgent:
         for x in ('green','orange','between','action','vector','value_estimate'):
             values.append(self.actr.chunk_slot_value(current_blending_chunk,x))
         values = tuple(values)
-        if len(self.dict_dm[values[0:4]]) >= 5:
+
+        #check for maximum number of items in that category
+        if len(self.dict_dm[values[0:4]]) >= 10:
             return 1
 
+        #If there are none, put one
         if not self.dict_dm[values[0:4]]:
             self.dict_dm[values[0:4]].append(values[4])
             chk = ['isa', 'decision',
@@ -303,6 +306,7 @@ class ActorCriticAgent:
             self.vectors.append(values[4])
             self.distances = [max(self.distances), min(self.distances)]
             return 1
+
         narray1 = np.array(eval(values[4]))
         for vector_string in self.dict_dm[values[0:4]]:
             narray2 = np.array(eval(vector_string))
@@ -330,6 +334,7 @@ class ActorCriticAgent:
                 self.distances.append(ed)
             self.vectors.append(values[4])
             self.distances = [max(self.distances),min(self.distances)]
+        return 1
 
 
 
@@ -646,7 +651,7 @@ class ActorCriticAgent:
 
             self.actr.schedule_simple_event_now("set-buffer-chunk",
                                                 ['imaginal', chk[0]])  # self.actr.set_buffer_chunk('imaginal',chk[0])
-            actrThread = threading.Thread(target=self.actr.run, args=[1000])
+            actrThread = threading.Thread(target=self.actr.run, args=[2000])
             actrThread.start()
             self.game_start_wait_flag = False
 
