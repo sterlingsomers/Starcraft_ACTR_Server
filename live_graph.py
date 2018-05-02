@@ -47,17 +47,9 @@ def animate(i):
     ys2 = [0,0,0,0,0] #data values
     count = [0,0,0,0,0]
 
-    # if chks[('TRUE','FALSE','FALSE','SELECT-BEACON')]:
-    #     xs.append('green-only')
-    # if chks[('FALSE','TRUE','FALSE','SELECT-BEACON')]:
-    #     xs.append('orange-only')
-    # if chks[('TRUE','TRUE','FALSE','SELECT-BEACON')]:
-    #     xs.append('not-blocking')
-    # if chks[('TRUE','TRUE','TRUE','SELECT-AROUND')]:
-    #     xs.append('blocking-go-around')
-    #if chks[('TRUE','TRUE','TRUE','SELECT-BEACON')]:
-    #    xs.append(5)
-    #
+
+
+
     num = len(history)
     for case in history:
         if case['green'] and not case['orange'] and not case['blocking']:
@@ -104,21 +96,38 @@ def animate(i):
     ax1.plot(yps, xps)
 
 
-    if type(run_agent.agent.fc1) == int:
-        return
+    # if type(run_agent.agent.fc1) == int:
+    #     return
 
-    #print("agent",run_agent.agent.fc1)
-    fc1 = np.array(run_agent.agent.fc1)
-    fc1 = fc1.reshape((16,16))
-    #print("fc1", fc1,fc1.shape)
 
-    ax3.clear()
-    ax3.matshow(fc1)
+    #Hide the network activity graph for now
+    #commented out below.
+    # #print("agent",run_agent.agent.fc1)
+    # fc1 = np.array(run_agent.agent.fc1)
+    # fc1 = fc1.reshape((16,16))
+    # #print("fc1", fc1,fc1.shape)
+    #
+    # ax3.clear()
+    # ax3.matshow(fc1)
 
 
 
     #print("fc1",run_agent.agent.fc1)
 #        run_agent.agent.fc1 = run_agent.agent.fc1.reshape((16,16))
+
+    #NEED some way to get the salience and plot it
+    #dummy plot
+    ax3.clear()
+    categories = ('Green', 'Orange', 'Blocking')
+    y_pos = np.arange(len(categories))
+    salience = [0.5,0.5,0.1]
+
+    ax3.barh(y_pos, salience, align='center')
+    ax3.set_yticks(y_pos)
+    ax3.set_yticklabels(salience)
+    ax3.invert_yaxis()
+    ax3.set_xlabel('Salience')
+
 
 
 
