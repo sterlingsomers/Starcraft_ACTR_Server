@@ -424,6 +424,8 @@ class ActorCriticAgent:
                 print("linalg",ed)
                 print("cosine: returning", max([0-(ed/12),-2.5]))
                 return max([0-(ed/12),-2.5])
+                #the /12 is to scale it relative to the distances.
+                #TODO fix the /12 to relative to all the distances
                 #basis, s, v = svds(np.array(narray2,narray1))
                 #print(basis, s, v)
                 #print("cosine: returning ", - 1 + (1 - spatial.distance.cosine(narray1,narray2)))

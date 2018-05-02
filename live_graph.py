@@ -43,7 +43,7 @@ def animate(i):
 
 
 
-    xs2 = [1,2,3,4,5]
+    xs2 = ["select-green","select-orange","not-blocking","blocking","not-blocking-alt"]
     ys2 = [0,0,0,0,0] #data values
     count = [0,0,0,0,0]
 
