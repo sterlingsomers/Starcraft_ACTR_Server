@@ -33,8 +33,8 @@
      ;:imaginal-activation 1.0 ;;set imaginal activation to 0.0 for spreading activation
      ;:mas 1.0 ;;spreading activation
      ;;back to some parameters in the original sgp here
-     :v nil;t      ;;set to nil to turn off model output
-     :blt nil;t    ;;set to nil to turn off blending trace
+     :v t      ;;set to nil to turn off model output
+     :blt t    ;;set to nil to turn off blending trace
      :trace-detail high ;;lower this as needed, start at high for initial debugging.
      :style-warnings t  ;;set to nil to turn off production warnings, start at t for initial debugging.
      ) ;;end sgp
@@ -151,9 +151,12 @@
        wait       false
    =goal>
        state      get_action
+
+  
 )
 
 (P get_action
+   
    =goal>
        isa        initialize
        state      get_action
@@ -177,7 +180,8 @@
        action     =action
        wait       false
 
-   !eval! ("Blend")
+   !eval! ("do_salience")
+   ;!eval! ("Blend")
 
 )
 

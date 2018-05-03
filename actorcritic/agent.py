@@ -18,6 +18,7 @@ import math
 import time
 import threading
 import random
+import json
 
 import pickle
 
@@ -133,12 +134,18 @@ class ActorCriticAgent:
         self.actr = actr
         self.actr.add_command("cosine-similarity", self.cosine_similarity, "similarity hook function")
         self.actr.load_act_r_model("/Users/paulsomers/StarcraftMAC/MyAgents/starcraft-B1-rev2.lisp")
+        #add the blending history
+        actr.record_history("blending-trace")
         self.actr.add_command("tic", self.do_tic)
         self.actr.add_command("ignore", self.ignore)
         self.actr.add_command("set_response", self.set_response)
         self.actr.add_command("RHSWait", self.RHSWait)
         self.actr.add_command("GameStartWait", self.game_start_wait)
         self.actr.add_command("Blend", self.blend)
+
+        #add a function for computing the salience after the production has fired.
+        #seems sensible...
+        self.actr.add_command("do_salience", self.do_salience)
 
 
         #network activity
@@ -154,6 +161,11 @@ class ActorCriticAgent:
         self.actrChunks = []
         self.dict_dm = {}
         self.history = []
+
+        #the saliences dictionary should be [[0.1,0.5,0.3],[..]]
+        #actually, it probably can just be the last salience calculations
+        #[V1,V2,V3..]
+        self.saliences = []
 
         #Add some chunks to DM
         # chunks = [['isa', 'decision', 'green', 'True', 'orange', 'True', 'between', 'True', 'action', 'select-around'],
@@ -249,6 +261,24 @@ class ActorCriticAgent:
     def distance(self,a,b):
         '''duh. distance betweeen a and b'''
         pass
+
+    def access_by_key(self, key, list):
+        '''Assumes key,vallue pairs and returns the value'''
+        if not key in list:
+            raise KeyError("Key", key, "not in list")
+
+        return list[list.index(key) + 1]
+
+    def do_salience(self):
+        #time = actr.get_history_data("blending-times")
+        #print("time...", time)
+        blend_data = actr.get_history_data("blending-trace")
+        blend_data = json.loads(blend_data)
+        blend_data = blend_data[-1]
+        print("blend_data", blend_data)
+        print("probs...")
+        probs = [x[1][3] for x in self.access_by_key("CHUNKS",blend_data[1])]
+
 
     def blend(self):
         #narray1 = np.array(eval(narray1))
