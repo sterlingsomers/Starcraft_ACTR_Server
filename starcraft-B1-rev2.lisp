@@ -139,7 +139,7 @@
        orange     =orange
        between    =between
        vector     =vector
-       value_estimate =value_estimate
+       ;value_estimate =value_estimate
        :ignore-slots (wait)
        ;:do-not-generalize (green orange between vector value_estimate)
    =imaginal>
@@ -220,7 +220,7 @@
    =goal>
        state      do_action
    =imaginal>
-       action     select-beacon
+     <=  action     0.5
      - wait       true
 ==>
     =goal>
@@ -234,7 +234,7 @@
    =goal>
        state      do_action
    =imaginal>
-       action     select-around
+     > action     0.5
      - wait       true
 ==>
     =goal>

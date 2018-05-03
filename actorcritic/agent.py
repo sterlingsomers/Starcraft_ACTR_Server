@@ -182,7 +182,7 @@ class ActorCriticAgent:
         #     random_number = random.uniform(0.0,10.0)
         #     ck.append(random_number)
 
-        chunks = pickle.load(open('chunks.p','rb'))
+        chunks = pickle.load(open('chunks2.p','rb'))
 
         #add them to dm
         for ck in chunks:
@@ -190,16 +190,16 @@ class ActorCriticAgent:
 
         #organize those chunks into categories (dict)
         #for use when filtering durig "Blend" command
-        self.dict_dm = {('TRUE','FALSE','FALSE','SELECT-BEACON'):[],
-                        ('FALSE','TRUE','FALSE','SELECT-BEACON'):[],
-                        ('TRUE','TRUE','FALSE','SELECT-BEACON'):[],
-                        ('TRUE','TRUE','TRUE','SELECT-BEACON'):[],
-                        ('TRUE','TRUE','TRUE','SELECT-AROUND'):[]}
+        self.dict_dm = {(1,0,0,0):[],
+                        (0,1,0,0):[],
+                        (1,1,0,0):[],
+                        (1,1,1,0):[],
+                        (1,1,1,1):[]}
         for ck in chunks:
-            keys = (ck[3].upper(),
-                    ck[5].upper(),
-                    ck[7].upper(),
-                    ck[13].upper())
+            keys = (ck[3],
+                    ck[5],
+                    ck[7],
+                    ck[13])
             self.dict_dm[keys].append(ck[11])
 
 
@@ -270,6 +270,7 @@ class ActorCriticAgent:
         return list[list.index(key) + 1]
 
     def do_salience(self):
+        self.saliences = []
         #time = actr.get_history_data("blending-times")
         #print("time...", time)
         blend_data = actr.get_history_data("blending-trace")
@@ -281,7 +282,7 @@ class ActorCriticAgent:
         probs = [x[1][3] for x in self.access_by_key("CHUNKS",blend_data[1])]
         keys_list = ['GREEN','ORANGE','BETWEEN']
         FKs = [self.access_by_key(key.upper(), self.access_by_key('RESULT-CHUNK', blend_data[1])) for key in keys_list]
-        FKs = [int(eval(x.capitalize())) for x in FKs]
+        #FKs = [int(eval(x.capitalize())) for x in FKs]
         chunk_names = [x[0] for x in self.access_by_key('CHUNKS', blend_data[1])]
         vjks = []
         for name in chunk_names:
@@ -289,10 +290,11 @@ class ActorCriticAgent:
             for key in keys_list:
                 chunk_fs.append(actr.chunk_slot_value(name, key))
             vjks.append(chunk_fs)
-        vjks = [[int(eval(x.capitalize())) for x in y] for y in vjks]
+        #vjks = [[int(eval(x.capitalize())) for x in y] for y in vjks]
 
-
-        #normalizing the values...
+        tss = {}
+        ts2 = []
+        #normalizing the values... with n... which I don't know what it it's for
         n = 1
         for i in range(len(FKs)):
             if not i in tss:
@@ -306,6 +308,31 @@ class ActorCriticAgent:
                     dSim = 1 / n
                 tss[i].append(probs[i] * dSim)
             ts2.append(sum(tss[i]))
+
+        vios = [actr.chunk_slot_value(x, 'action') for x in chunk_names]
+
+        results = []
+        for i in range(len(FKs)):
+            tmp = 0
+            sub = []
+            for j in range(len(probs)):
+                if FKs[i] > vjks[j][i]:
+                    dSim = -1 / n
+                elif FKs[i] == vjks[j][i]:
+                    dSim = 0
+                else:
+                    dSim = 1 / n
+                tmp = probs[j] * (dSim - ts2[i]) * vios[j]  # sum(tss[i])) * vios[j]
+                sub.append(tmp)
+            results.append(sub)
+
+        MP = actr.get_parameter_value(':mp')
+        t = self.access_by_key('TEMPERATURE', blend_data[1])
+
+        for s in results:
+            self.saliences.append(MP/t * sum(s))
+
+        print("salience done", self.saliences)
 
 
     def blend(self):
@@ -442,8 +469,8 @@ class ActorCriticAgent:
         self.history.append(dict(history_dict))
 
 
-        chunk = ['isa', 'game-state', 'wait', 'false', 'green', str(green_beacon), 'orange', str(orange_beacon),
-                     'between', str(between), 'vector', str(list(args[3])), 'value_estimate', float(args[2][0]) ]
+        chunk = ['isa', 'game-state', 'wait', 'false', 'green', int(green_beacon), 'orange', int(orange_beacon),
+                     'between', int(between), 'vector', str(list(args[3])), 'value_estimate', float(args[2][0]) ]
 
         chk = self.actr.define_chunks(chunk)
         self.actr.schedule_simple_event_now("set-buffer-chunk", ['imaginal', chk[0]])
@@ -466,6 +493,9 @@ class ActorCriticAgent:
         return 1
     def cosine_similarity(self,narray1,narray2):
         print("Cosine called.", narray1, narray2, type(narray1), type(narray2))
+        if type(narray1) == int and type(narray2) == int:
+            print("consine: returning (ints)", -0.6 * abs(narray1 - narray2))
+            return -0.6 * abs(narray1 - narray2)
         if narray1 == 'TRUE' or narray1 == 'FALSE':
             if narray1 == narray2:
                 print("cosine: returning 0")

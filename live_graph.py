@@ -117,14 +117,17 @@ def animate(i):
 
     #NEED some way to get the salience and plot it
     #dummy plot
-    ax3.clear()
+    #
     categories = ('Green', 'Orange', 'Blocking')
     y_pos = np.arange(len(categories))
-    salience = [0.5,0.5,0.1]
-
+    salience = run_agent.agent.saliences
+    if not salience:
+        salience = [0,0,0]
+    print("saliences", salience)
+    ax3.clear()
     ax3.barh(y_pos, salience, align='center')
     ax3.set_yticks(y_pos)
-    ax3.set_yticklabels(salience)
+    ax3.set_yticklabels(['green','orange','blocking'])
     ax3.invert_yaxis()
     ax3.set_xlabel('Salience')
 
