@@ -273,11 +273,39 @@ class ActorCriticAgent:
         #time = actr.get_history_data("blending-times")
         #print("time...", time)
         blend_data = actr.get_history_data("blending-trace")
+        #print("blend_data", blend_data)
         blend_data = json.loads(blend_data)
         blend_data = blend_data[-1]
-        print("blend_data", blend_data)
-        print("probs...")
+        #print("blend_data", blend_data)
+        #print("probs...")
         probs = [x[1][3] for x in self.access_by_key("CHUNKS",blend_data[1])]
+        keys_list = ['GREEN','ORANGE','BETWEEN']
+        FKs = [self.access_by_key(key.upper(), self.access_by_key('RESULT-CHUNK', blend_data[1])) for key in keys_list]
+        FKs = [int(eval(x.capitalize())) for x in FKs]
+        chunk_names = [x[0] for x in self.access_by_key('CHUNKS', blend_data[1])]
+        vjks = []
+        for name in chunk_names:
+            chunk_fs = []
+            for key in keys_list:
+                chunk_fs.append(actr.chunk_slot_value(name, key))
+            vjks.append(chunk_fs)
+        vjks = [[int(eval(x.capitalize())) for x in y] for y in vjks]
+
+
+        #normalizing the values...
+        n = 1
+        for i in range(len(FKs)):
+            if not i in tss:
+                tss[i] = []
+            for j in range(len(probs)):
+                if FKs[i] > vjks[j][i]:
+                    dSim = -1 / n
+                elif FKs[i] == vjks[j][i]:
+                    dSim = 0
+                else:
+                    dSim = 1 / n
+                tss[i].append(probs[i] * dSim)
+            ts2.append(sum(tss[i]))
 
 
     def blend(self):
