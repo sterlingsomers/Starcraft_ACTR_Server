@@ -83,6 +83,7 @@ class Runner(object):
             # could calculate value estimate from obs when do training
             # but saving values here will make n step reward calculation a bit easier
             action_ids, spatial_action_2ds, value_estimate = self.agent.step(latest_obs)
+            #Todo use the latest obs, store the reward, make a value estimate.
             #print('step: ', n, action_ids, spatial_action_2ds, value_estimate)  # (MINE)
             # (MINE) Store actions and value estimates for all steps
             mb_values[:, n] = value_estimate

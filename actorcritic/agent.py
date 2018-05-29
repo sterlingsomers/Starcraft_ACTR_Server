@@ -295,7 +295,7 @@ class ActorCriticAgent:
         tss = {}
         ts2 = []
         #normalizing the values... with n... which I don't know what it it's for
-        n = 1
+        n = 0.5
         for i in range(len(FKs)):
             if not i in tss:
                 tss[i] = []
@@ -317,11 +317,11 @@ class ActorCriticAgent:
             sub = []
             for j in range(len(probs)):
                 if FKs[i] > vjks[j][i]:
-                    dSim = -1 / n
+                    dSim = 1 / n
                 elif FKs[i] == vjks[j][i]:
                     dSim = 0
                 else:
-                    dSim = 1 / n
+                    dSim = -1 / n
                 tmp = probs[j] * (dSim - ts2[i]) * vios[j]  # sum(tss[i])) * vios[j]
                 sub.append(tmp)
             results.append(sub)
@@ -494,8 +494,8 @@ class ActorCriticAgent:
     def cosine_similarity(self,narray1,narray2):
         print("Cosine called.", narray1, narray2, type(narray1), type(narray2))
         if type(narray1) == int and type(narray2) == int:
-            print("consine: returning (ints)", -0.6 * abs(narray1 - narray2))
-            return -0.6 * abs(narray1 - narray2)
+            print("consine: returning (ints)", -0.5 * abs(narray1 - narray2))
+            return -0.5 * abs(narray1 - narray2)
         if narray1 == 'TRUE' or narray1 == 'FALSE':
             if narray1 == narray2:
                 print("cosine: returning 0")
