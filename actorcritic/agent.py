@@ -298,13 +298,13 @@ class ActorCriticAgent:
                         between = True
             print("BETWEEN", between)
 
-        chosen_action = 'green_beacon'
+        chosen_action = 0
 
         if orange_beacon:
-            chosen_action = 'orange_beacon'
+            chosen_action = 1
 
         history_dict = {'green':green_beacon,'orange':orange_beacon,'blocking':between,
-                        'actr':False, 'chosen_action':chosen_action.upper(),
+                        'actr':False, 'chosen_action':chosen_action,
                         'neutral_x':neutral_x, 'neutral_y':neutral_y,
                         'enemy_x':enemy_x, 'enemy_y':enemy_y,
                         'player_x':player_x,'player_y':player_y}
