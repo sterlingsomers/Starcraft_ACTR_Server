@@ -26,7 +26,7 @@ history = np.random.choice(history,maximum_history_length)
 chunks = []
 for case in history:
     ck = ['isa','decision','green',int(case['green']),
-          'orange',int(case['orange']),'between',int(case['blocking']),
+          'orange',int(case['orange']),'blocking',int(case['blocking']),
           'action', case['chosen_action']]
           #'value_estimate',repr(case['value_estimate']),
           #'vector',repr(list(case['fc1']))]
