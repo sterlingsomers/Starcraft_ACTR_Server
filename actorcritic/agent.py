@@ -14,6 +14,7 @@ from common.util import weighted_random_sample, select_from_each_row, ravel_inde
 from pysc2.lib import features
 
 import actr
+import episode_utils
 import math
 import time
 import threading
@@ -133,7 +134,7 @@ class ActorCriticAgent:
         #load the ACT-R model
         self.actr = actr
         self.actr.add_command("cosine-similarity", self.cosine_similarity, "similarity hook function")
-        self.actr.load_act_r_model("/Users/paulsomers/StarcraftMAC/MyAgents/starcraft-B1-rev2.lisp")
+        self.actr.load_act_r_model("/Users/paulsomers/StarcraftMAC/MyAgents/AAAI_first_analysis.lisp")
         #add the blending history
         actr.record_history("blending-trace")
         self.actr.add_command("tic", self.do_tic)
@@ -141,7 +142,7 @@ class ActorCriticAgent:
         self.actr.add_command("set_response", self.set_response)
         self.actr.add_command("RHSWait", self.RHSWait)
         self.actr.add_command("GameStartWait", self.game_start_wait)
-        self.actr.add_command("Blend", self.blend)
+        #self.actr.add_command("Blend", self.blend)
 
         #add a function for computing the salience after the production has fired.
         #seems sensible...
@@ -188,19 +189,19 @@ class ActorCriticAgent:
         for ck in chunks:
             self.actr.add_dm(ck)
 
-        #organize those chunks into categories (dict)
-        #for use when filtering durig "Blend" command
-        self.dict_dm = {(1,0,0,0):[],
-                        (0,1,0,0):[],
-                        (1,1,0,0):[],
-                        (1,1,1,0):[],
-                        (1,1,1,1):[]}
-        for ck in chunks:
-            keys = (ck[3],
-                    ck[5],
-                    ck[7],
-                    ck[13])
-            self.dict_dm[keys].append(ck[11])
+        # #organize those chunks into categories (dict)
+        # #for use when filtering durig "Blend" command
+        # self.dict_dm = {(1,0,0,0):[],
+        #                 (0,1,0,0):[],
+        #                 (1,1,0,0):[],
+        #                 (1,1,1,0):[],
+        #                 (1,1,1,1):[]}
+        # for ck in chunks:
+        #     keys = (ck[3],
+        #             ck[5],
+        #             ck[7],
+        #             ck[13])
+        #     self.dict_dm[keys].append(ck[11])
 
 
 
@@ -336,6 +337,7 @@ class ActorCriticAgent:
 
 
     def blend(self):
+        return 0
         #narray1 = np.array(eval(narray1))
         #narray2 = np.array(eval(narray2))
         #ed = np.linalg.norm(narray1 - narray2)
@@ -477,8 +479,8 @@ class ActorCriticAgent:
         self.history.append(dict(history_dict))
 
 
-        chunk = ['isa', 'game-state', 'wait', 'false', 'green', int(green_beacon), 'orange', int(orange_beacon),
-                     'between', int(between), 'vector', str(list(args[3])), 'value_estimate', float(args[2][0]) ]
+        chunk = ['isa', 'observation', 'wait', 'false', 'green', int(green_beacon), 'orange', int(orange_beacon),
+                     'between', int(between)]#'vector', str(list(args[3])), 'value_estimate', float(args[2][0]) ]
 
         chk = self.actr.define_chunks(chunk)
         self.actr.schedule_simple_event_now("set-buffer-chunk", ['imaginal', chk[0]])
@@ -499,6 +501,8 @@ class ActorCriticAgent:
         #     #self.actr.schedule_simple_event_now("ignore")
 
         return 1
+
+
     def cosine_similarity(self,narray1,narray2):
         print("Cosine called.", narray1, narray2, type(narray1), type(narray2))
         if type(narray1) == int and type(narray2) == int:
@@ -737,24 +741,26 @@ class ActorCriticAgent:
 
         self.obs = obs
 
-        w = self.push_observation([action_id,spatial_action_2d,value_estimate,fc1_narray])
-        while not w:
-            time.sleep(0.00001)
-        current_imaginal_chunk = self.actr.buffer_chunk('imaginal')
-        #print("current_imaginal_chunk", current_imaginal_chunk[0])
-        self.actr.mod_chunk(current_imaginal_chunk[0], "wait", "false")
-        self.RHSWaitFlag = False
-        print("RHSWaitFlag set to False")
-        # self.actr.schedule_simple_event_now("mod-chunk-fct", 'imaginal', 'wait', 'false')
+        if episode_utils.this_step(obs):
 
-        print("here3")
-        while not self.tickable:
-            time.sleep(0.00001)
+            w = self.push_observation([action_id,spatial_action_2d,value_estimate,fc1_narray])
+            while not w:
+                time.sleep(0.00001)
+            current_imaginal_chunk = self.actr.buffer_chunk('imaginal')
+            #print("current_imaginal_chunk", current_imaginal_chunk[0])
+            self.actr.mod_chunk(current_imaginal_chunk[0], "wait", "false")
+            self.RHSWaitFlag = False
+            print("RHSWaitFlag set to False")
+            # self.actr.schedule_simple_event_now("mod-chunk-fct", 'imaginal', 'wait', 'false')
 
-        self.stepped = True
-        self.tickable = False
+            print("here3")
+            while not self.tickable:
+                time.sleep(0.00001)
 
-        print("here4")
+            self.stepped = True
+            self.tickable = False
+
+            print("here4")
 
 
 

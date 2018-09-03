@@ -2,6 +2,14 @@ import numpy as np
 
 
 
+
+filter_steps = []
+def this_step(history):
+
+    return 1
+
+
+
 def filter_substeps(history):
     '''Returns a history where substeps are filtered out'''
     current_step = 0
