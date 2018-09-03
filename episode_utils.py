@@ -116,7 +116,7 @@ class episode_filter():
                 np.array_equal(current_step['enemy_y'], self.previous_step['enemy_y']):
 
                     return 0
-        previous_step = history_dict
+        self.previous_step = history_dict
         return 1
 
 # filter_steps = 0

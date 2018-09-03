@@ -185,7 +185,21 @@ class ActorCriticAgent:
         #     random_number = random.uniform(0.0,10.0)
         #     ck.append(random_number)
 
-        chunks = pickle.load(open('chunks.p','rb'))
+        #chunks = pickle.load(open('chunks.p','rb'))
+        #I only 1 copy of all situations
+        chunks = []
+        chunks.append(['isa', 'decision', 'green', 1,
+                       'orange', 0,
+                       'blocking', 0,
+                       'action', 0])
+        chunks.append(['isa', 'decision', 'green', 1,
+                       'orange', 1,
+                       'blocking', 0,
+                       'action', 1])
+        chunks.append(['isa', 'decision', 'green', 1,
+                       'orange', 1,
+                       'blocking', 1,
+                       'action', 1])
 
         #add them to dm
         for ck in chunks:
@@ -392,7 +406,7 @@ class ActorCriticAgent:
         print("RHSWwait called, flag set to True")
         self.RHSWaitFlag = True
         while self.RHSWaitFlag:
-            time.sleep(0.00001)
+            time.sleep(0.01)
         return 1
 
     def ignore(self):
@@ -686,28 +700,27 @@ class ActorCriticAgent:
         self.obs = obs
         history_dict = self.episode_filter.obs_to_dict(obs)
 
+        if not action_id[0] == 7: #if it hasn't yet selected the agent, just let it
+            if self.episode_filter.this_step(history_dict):
 
-        if self.episode_filter.this_step(history_dict):
+                w = self.push_observation([history_dict,action_id,spatial_action_2d,value_estimate,fc1_narray])
+                #time.sleep(2)
+                while not w:
+                   time.sleep(0.00001)
+                #current_imaginal_chunk = self.actr.buffer_chunk('imaginal')
+                #print("current_imaginal_chunk", current_imaginal_chunk[0])
+                #self.actr.mod_chunk(current_imaginal_chunk[0], "wait", "false")
+                self.RHSWaitFlag = False
+                print("RHSWaitFlag set to False")
+                self.actr.schedule_simple_event_now("ignore")
+                print("here3")
+                # while not self.tickable:
+                #    time.sleep(0.00001)
 
-            w = self.push_observation([history_dict,action_id,spatial_action_2d,value_estimate,fc1_narray])
-            while not w:
-                time.sleep(0.00001)
-            current_imaginal_chunk = self.actr.buffer_chunk('imaginal')
-            #print("current_imaginal_chunk", current_imaginal_chunk[0])
-            self.actr.mod_chunk(current_imaginal_chunk[0], "wait", "false")
-            self.RHSWaitFlag = False
-            print("RHSWaitFlag set to False")
-            # self.actr.schedule_simple_event_now("mod-chunk-fct", 'imaginal', 'wait', 'false')
+                self.stepped = True
+                self.tickable = False
 
-            print("here3")
-            while not self.tickable:
-                time.sleep(0.00001)
-
-            self.stepped = True
-            self.tickable = False
-
-            print("here4")
-
+                print("here4")
 
 
         spatial_action_2d = np.array(

@@ -82,23 +82,23 @@
 
 
 
-(P wait
-   =imaginal>
-       wait       true
-   ?imaginal>
-       state      free
-   ==>
-   =imaginal>
-       green      nil
-       orange     nil
-       blocking   nil
-       ;vector     nil
-       ;value_estimate nil
-       wait       true
-
-   !eval! ("RHSWait")
-   
-)
+;(P wait
+;   =imaginal>
+;       wait       true
+;   ?imaginal>
+;       state      free
+;   ==>
+;   =imaginal>
+;       green      nil
+;       orange     nil
+;       blocking   nil
+;       ;vector     nil
+;       ;value_estimate nil
+;       wait       true
+;
+;   !eval! ("RHSWait")
+;   
+;)
 ;;should the wait production tic as well?
 ;;my initial thought is no because it 
 ;;should be happening between tics
@@ -227,8 +227,6 @@
      <=  action     0.5
      - wait       true
 ==>
-    =goal>
-       state      check-neutrals
     =imaginal>
        wait       true
        action     nil
@@ -241,10 +239,8 @@
      > action     0.5
      - wait       true
 ==>
-    =goal>
-       state      check-neutrals
     =imaginal>
-       wait       true
+      wait       true
        action     nil
     !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" 1 1 "select_around")
 )
