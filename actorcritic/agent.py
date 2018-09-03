@@ -148,6 +148,8 @@ class ActorCriticAgent:
         #seems sensible...
         self.actr.add_command("do_salience", self.do_salience)
 
+        self.episode_filter = episode_utils.episode_filter()
+
 
         #network activity
         self.fc1 = 0
@@ -415,72 +417,14 @@ class ActorCriticAgent:
     def push_observation(self, args):
         '''Return a dictionary of observations'''
         #args are:
-        #[action_id,spatial_action_2d,value_estimate,fc1_narray]
+        #[history_dict,action_id,spatial_action_2d,value_estimate,fc1_narray]
 
-        player_relative = self.obs["player_relative_screen"]
-        #print("PR", (player_relative == _PLAYER_NEUTRAL).nonzero())
-        orange_beacon = False
-        green_beacon = False
-        player = False
-        between = False
-
-        neutral_x, neutral_y = (player_relative == _PLAYER_NEUTRAL).nonzero()[1:3]
-        enemy_x, enemy_y = (player_relative == _PLAYER_HOSTILE).nonzero()[1:3]
-        player_x, player_y = (player_relative == _PLAYER_FRIENDLY).nonzero()[1:3]
-
-        if neutral_y.any():
-            green_beacon = True
-
-            if enemy_y.any():
-                orange_beacon = True
-            if player_y.any():
-                player = True
-
-        if enemy_y.any():
-            orange_beacon = True
-
-            if neutral_y.any():
-                green_beacon = True
-            if player_y.any():
-                player = True
-
-        print("push_observation:", orange_beacon, player, green_beacon)
-        if orange_beacon and player and green_beacon:
-            #check for blocking or overlap
-
-            #Determine if green is between orange and player
-            green_points = list(zip(neutral_x,neutral_y))
-            orange_points = list(zip(enemy_x, enemy_y))
-            player_points = list(zip(player_x, player_y))
-
-            #https: // stackoverflow.com / questions / 328107 / how - can - you - determine - a - point - is -between - two - other - points - on - a - line - segment
-            between = False
-            set_of_points_to_check_between = [(x,y) for x in player_points for y in orange_points]
-            #print("green points", green_points)
-            #print("orange points", orange_points)
-            #print("player_pionts", player_points)
-            #print("set of", set_of_points_to_check_between)
-            for points in set_of_points_to_check_between:
-                for green_point in green_points:
-                    if self.is_blocking(points[0],points[1],green_point):
-                        between = True
-            print("BETWEEN", between)
-
-        chosen_action = 'green_beacon'
-
-        if orange_beacon:
-            chosen_action = 'orange_beacon'
-
-        history_dict = {'green':green_beacon,'orange':orange_beacon,'blocking':between,
-                        'actr':False, 'chosen_action':chosen_action.upper(),
-                        'neutral_x':neutral_x, 'neutral_y':neutral_y,
-                        'enemy_x':enemy_x, 'enemy_y':enemy_y,
-                        'player_x':player_x,'player_y':player_y}
-        self.history.append(dict(history_dict))
+        history_dict = args[0]
 
 
-        chunk = ['isa', 'observation', 'wait', 'false', 'green', int(green_beacon), 'orange', int(orange_beacon),
-                     'between', int(between)]#'vector', str(list(args[3])), 'value_estimate', float(args[2][0]) ]
+        chunk = ['isa', 'observation', 'wait', 'false', 'green', int(history_dict['green']),
+                 'orange', int(history_dict['orange']),
+                     'blocking', int(history_dict['blocking'])]#'vector', str(list(args[3])), 'value_estimate', float(args[2][0]) ]
 
         chk = self.actr.define_chunks(chunk)
         self.actr.schedule_simple_event_now("set-buffer-chunk", ['imaginal', chk[0]])
@@ -740,10 +684,12 @@ class ActorCriticAgent:
 
 
         self.obs = obs
+        history_dict = self.episode_filter.obs_to_dict(obs)
 
-        if episode_utils.this_step(obs):
 
-            w = self.push_observation([action_id,spatial_action_2d,value_estimate,fc1_narray])
+        if self.episode_filter.this_step(history_dict):
+
+            w = self.push_observation([history_dict,action_id,spatial_action_2d,value_estimate,fc1_narray])
             while not w:
                 time.sleep(0.00001)
             current_imaginal_chunk = self.actr.buffer_chunk('imaginal')

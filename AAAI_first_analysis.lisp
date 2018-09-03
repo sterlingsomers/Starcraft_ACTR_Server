@@ -43,15 +43,9 @@
      ) ;;end sgp
 
 
-(sgp :sim-hook "similarity_function"
-         ;:blending-request-hook "new_blend_request"
-         :tmp 1.0
-         ;:seed (1 1) :bll nil :blc 5 :mp 1 :v t :blt t :esc t :ans .25 :rt -5)
-         :seed (1 1) :bll nil :blc 5 :mp 1 :v t :blt t :esc t :ans nil :rt -5 :value->mag second)
-
 (chunk-type initialize state)
-(chunk-type decision green orange between action)
-(chunk-type observation green orange between)
+(chunk-type decision green orange blocking action)
+(chunk-type observation green orange blocking)
 ;(chunk-type action value)
 ;(chunk-type game-state value)
 
@@ -77,7 +71,7 @@
    =imaginal>
        green      nil
        orange     nil
-       between    nil
+       blocking    nil
        ;vector     nil
        ;value_estimate nil
        wait       true
@@ -97,7 +91,7 @@
    =imaginal>
        green      nil
        orange     nil
-       between    nil
+       blocking   nil
        ;vector     nil
        ;value_estimate nil
        wait       true
@@ -136,7 +130,7 @@
        isa        observation
        green      =green
        orange     =orange
-       between    =between
+       blocking    =between
        ;vector     =vector
        ;value_estimate =value_estimate
      - wait       true
@@ -147,7 +141,7 @@
        isa        decision ;notice the change from game-state to decision
        green      =green
        orange     =orange
-       between    =between
+       blocking    =between
        ;vector     =vector
        ;value_estimate =value_estimate
        :ignore-slots (wait)
@@ -155,7 +149,7 @@
    =imaginal>
        green      nil
        orange     nil
-       between    nil
+       blocking    nil
        ;vector     nil
        ;value_estimate nil
        wait       false
@@ -174,7 +168,7 @@
        isa        decision
        green      =green
        orange     =orange
-       between    =between
+       blocking    =between
        ;vector     =vector
        ;value_estimate =value_estimate
        action     =action
@@ -195,38 +189,38 @@
 
 )
 
+;(P select-green
+;   =goal>
+;       state      do_action
+;   =imaginal>
+;       action     select-green
+;     - wait       true
+;
+;==>
+;    =goal>
+;       state      check-neutrals
+;    =imaginal>
+;       wait       true
+;       action     nil
+;    !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" 1 1 "select_green")
+;)
+
+;(P select-orange
+;   =goal>
+;       state      do_action
+;   =imaginal>
+;       action     select-orange
+;     - wait       true
+;==>
+;    =goal>
+;       state      check-neutrals
+;    =imaginal>
+;       wait       true
+;       action     nil
+;    !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" 1 1 "select_orange")
+;)
+
 (P select-green
-   =goal>
-       state      do_action
-   =imaginal>
-       action     select-green
-     - wait       true
-
-==>
-    =goal>
-       state      check-neutrals
-    =imaginal>
-       wait       true
-       action     nil
-    !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" 1 1 "select_green")
-)
-
-(P select-orange
-   =goal>
-       state      do_action
-   =imaginal>
-       action     select-orange
-     - wait       true
-==>
-    =goal>
-       state      check-neutrals
-    =imaginal>
-       wait       true
-       action     nil
-    !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" 1 1 "select_orange")
-)
-
-(P select-beacon
    =goal>
        state      do_action
    =imaginal>
@@ -240,7 +234,7 @@
        action     nil
     !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" 1 1 "select_beacon")
 )
-(P select-around
+(P select-orange
    =goal>
        state      do_action
    =imaginal>
