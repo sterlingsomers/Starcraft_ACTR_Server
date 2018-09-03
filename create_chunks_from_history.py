@@ -27,21 +27,12 @@ chunks = []
 for case in history:
     ck = ['isa','decision','green',repr(case['green']),
           'orange',repr(case['orange']),'between',repr(case['blocking']),
-          'value_estimate',repr(case['value_estimate']),
-          'vector',repr(list(case['fc1']))]
+          'action', case['chosen_action']]
+          #'value_estimate',repr(case['value_estimate']),
+          #'vector',repr(list(case['fc1']))]
 
-    if case['green'] and case['orange'] and case['blocking']:
-        ck.append('action')
-        ck.append('select-around')
-    elif case['green'] and case['orange'] and not case['blocking']:
-        ck.append('action')
-        ck.append('select-orange')
-    elif case['green'] and not case['orange'] and not case['blocking']:
-        ck.append('action')
-        ck.append('select-green')
-    elif not case['green'] and case['orange'] and not case['blocking']:
-        ck.append('action')
-        ck.append('select-orange')
+
+
     chunks.append(ck.copy())
 
 

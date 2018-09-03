@@ -143,6 +143,9 @@ class Runner(object):
         actions_pp = self.action_processer.process(action_ids, spatial_action_2ds)
         # state(t+1) = env.step(action)
         obs_raw = self.envs.step(actions_pp) # (MINE) ENVS STEP = THE ACTUAL ENVIRONMENTAL STEP
+
+
+
         latest_obs = self.obs_processer.process(
             obs_raw)  # (MINE) =process(state(t+1)). Processes all inputs/obs from all timesteps
 
