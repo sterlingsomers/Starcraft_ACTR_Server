@@ -130,7 +130,22 @@ class ActorCriticAgent:
         self.clip_epsilon = clip_epsilon
         self.policy = policy
 
+        #load the ACT-R model
+        self.actr = actr
+        self.actr.add_command("cosine-similarity", self.cosine_similarity, "similarity hook function")
+        self.actr.load_act_r_model("/Users/paulsomers/StarcraftMAC/MyAgents/starcraft-B1-rev2.lisp")
+        #add the blending history
+        actr.record_history("blending-trace")
+        self.actr.add_command("tic", self.do_tic)
+        self.actr.add_command("ignore", self.ignore)
+        self.actr.add_command("set_response", self.set_response)
+        self.actr.add_command("RHSWait", self.RHSWait)
+        self.actr.add_command("GameStartWait", self.game_start_wait)
+        self.actr.add_command("Blend", self.blend)
 
+        #add a function for computing the salience after the production has fired.
+        #seems sensible...
+        self.actr.add_command("do_salience", self.do_salience)
 
 
         #network activity
@@ -167,8 +182,25 @@ class ActorCriticAgent:
         #     random_number = random.uniform(0.0,10.0)
         #     ck.append(random_number)
 
+        chunks = pickle.load(open('chunks.p','rb'))
 
+        #add them to dm
+        for ck in chunks:
+            self.actr.add_dm(ck)
 
+        #organize those chunks into categories (dict)
+        #for use when filtering durig "Blend" command
+        self.dict_dm = {(1,0,0,0):[],
+                        (0,1,0,0):[],
+                        (1,1,0,0):[],
+                        (1,1,1,0):[],
+                        (1,1,1,1):[]}
+        for ck in chunks:
+            keys = (ck[3],
+                    ck[5],
+                    ck[7],
+                    ck[13])
+            self.dict_dm[keys].append(ck[11])
 
 
 
@@ -237,12 +269,146 @@ class ActorCriticAgent:
 
         return list[list.index(key) + 1]
 
+    def do_salience(self):
+        self.saliences = []
+        #time = actr.get_history_data("blending-times")
+        #print("time...", time)
+        blend_data = actr.get_history_data("blending-trace")
+        #print("blend_data", blend_data)
+        blend_data = json.loads(blend_data)
+        blend_data = blend_data[-1]
+        #print("blend_data", blend_data)
+        #print("probs...")
+        probs = [x[1][3] for x in self.access_by_key("CHUNKS",blend_data[1])]
+        keys_list = ['GREEN','ORANGE','BETWEEN']
+        FKs = [self.access_by_key(key.upper(), self.access_by_key('RESULT-CHUNK', blend_data[1])) for key in keys_list]
+        #FKs = [int(eval(x.capitalize())) for x in FKs]
+        chunk_names = [x[0] for x in self.access_by_key('CHUNKS', blend_data[1])]
+        vjks = []
+        for name in chunk_names:
+            chunk_fs = []
+            for key in keys_list:
+                chunk_fs.append(actr.chunk_slot_value(name, key))
+            vjks.append(chunk_fs)
+        #vjks = [[int(eval(x.capitalize())) for x in y] for y in vjks]
+
+        tss = {}
+        ts2 = []
+        #normalizing the values... with n... which I don't know what it it's for
+        n = 1
+        for i in range(len(FKs)):
+            if not i in tss:
+                tss[i] = []
+            for j in range(len(probs)):
+                if FKs[i] > vjks[j][i]:
+                    dSim = -1 / n
+                elif FKs[i] == vjks[j][i]:
+                    dSim = 0
+                else:
+                    dSim = 1 / n
+                tss[i].append(probs[i] * dSim)
+            ts2.append(sum(tss[i]))
+
+        vios = [actr.chunk_slot_value(x, 'action') for x in chunk_names]
+
+        results = []
+        for i in range(len(FKs)):
+            tmp = 0
+            sub = []
+            for j in range(len(probs)):
+                if FKs[i] > vjks[j][i]:
+                    dSim = -1 / n
+                elif FKs[i] == vjks[j][i]:
+                    dSim = 0
+                else:
+                    dSim = 1 / n
+                tmp = probs[j] * (dSim - ts2[i]) * vios[j]  # sum(tss[i])) * vios[j]
+                sub.append(tmp)
+            results.append(sub)
+
+        MP = actr.get_parameter_value(':mp')
+        t = self.access_by_key('TEMPERATURE', blend_data[1])
+
+        for s in results:
+            self.saliences.append(MP/t * sum(s))
+
+        print("salience done", self.saliences)
 
 
+    def blend(self):
+        #narray1 = np.array(eval(narray1))
+        #narray2 = np.array(eval(narray2))
+        #ed = np.linalg.norm(narray1 - narray2)
+        print("blend called")
+        current_blending_chunk = self.actr.buffer_read('blending')
+        values = []
+        smallest_distance = 10000
+        distance_threshold = 18
+        ed = smallest_distance + 1
+        for x in ('green','orange','between','action','vector','value_estimate'):
+            values.append(self.actr.chunk_slot_value(current_blending_chunk,x))
+        values = tuple(values)
+        if len(self.dict_dm[values[0:4]]) >= 5:
+            return 1
+
+        if not self.dict_dm[values[0:4]]:
+            self.dict_dm[values[0:4]].append(values[4])
+            chk = ['isa', 'decision',
+                   'green', values[0],
+                   'orange', values[1],
+                   'between', values[2],
+                   'vector', values[4],
+                   'value_estimate', values[5],
+                   'action', values[3]]
+            self.actr.add_dm(chk)
+            return 1
+        narray1 = np.array(eval(values[4]))
+        for vector_string in self.dict_dm[values[0:4]]:
+            narray2 = np.array(eval(vector_string))
+            ed = np.linalg.norm(narray1 - narray2)
+            if ed < smallest_distance:
+                smallest_distance = ed
+            print("blend",ed)
+
+        if smallest_distance > distance_threshold:
+            self.dict_dm[values[0:4]].append(values[4])
+            chk = ['isa', 'decision',
+                   'green',values[0],
+                   'orange',values[1],
+                   'between',values[2],
+                   'vector',values[4],
+                   'value_estimate',values[5],
+                   'action',values[3]]
+            self.actr.add_dm(chk)
+
+
+
+
+    def RHSWait(self):
+        print("RHSWwait called, flag set to True")
+        self.RHSWaitFlag = True
+        while self.RHSWaitFlag:
+            time.sleep(0.00001)
+        return 1
 
     def ignore(self):
         return 0
 
+    def game_start_wait(self):
+        print("GAME START WAIT")
+
+        while self.game_start_wait_flag:
+            time.sleep(0.00001)
+        print("Game START returned")
+        return 1
+
+    def do_tic(self):
+        print("do_tic: tic called")
+        #print("do_tic: waiting for the stepper to start")
+        self.actr.schedule_simple_event_now("ignore")
+        self.tickable = True
+
+        return 1
 
     def push_observation(self, args):
         '''Return a dictionary of observations'''
@@ -311,6 +477,13 @@ class ActorCriticAgent:
         self.history.append(dict(history_dict))
 
 
+        chunk = ['isa', 'game-state', 'wait', 'false', 'green', int(green_beacon), 'orange', int(orange_beacon),
+                     'between', int(between), 'vector', str(list(args[3])), 'value_estimate', float(args[2][0]) ]
+
+        chk = self.actr.define_chunks(chunk)
+        self.actr.schedule_simple_event_now("set-buffer-chunk", ['imaginal', chk[0]])
+
+
             # print(neutral_y, len(neutral_y), min(neutral_y), max(neutral_y))
 
         # if neutral_y.any():
@@ -326,7 +499,80 @@ class ActorCriticAgent:
         #     #self.actr.schedule_simple_event_now("ignore")
 
         return 1
+    def cosine_similarity(self,narray1,narray2):
+        print("Cosine called.", narray1, narray2, type(narray1), type(narray2))
+        if type(narray1) == int and type(narray2) == int:
+            print("consine: returning (ints)", -0.6 * abs(narray1 - narray2))
+            return -0.6 * abs(narray1 - narray2)
+        if narray1 == 'TRUE' or narray1 == 'FALSE':
+            if narray1 == narray2:
+                print("cosine: returning 0")
+                return 0
+            else:
+                print("cosine: returning",-2.5/6)
+                return -2.5/6
+        if type(narray1) == str:
+            if narray1[0] == '[':
+                narray1 = np.array(eval(narray1))
+                narray2 = np.array(eval(narray2))
 
+                ed = np.linalg.norm(narray1-narray2)
+                print("linalg",ed)
+                print("cosine: returning", max([0-(ed/12),-2.5]))
+                return max([0-(ed/12),-2.5])
+                #the /12 is to scale it relative to the distances.
+                #TODO fix the /12 to relative to all the distances
+                #basis, s, v = svds(np.array(narray2,narray1))
+                #print(basis, s, v)
+                #print("cosine: returning ", - 1 + (1 - spatial.distance.cosine(narray1,narray2)))
+                #return -1 + (1 - spatial.distance.cosine(narray1,narray2))
+        else:
+            if narray1 is None:
+                print("cosine: returning 0")
+                return -2.5
+            if narray2 is None:
+                print("cosine: returning 0")
+                return -2.5
+            print("cosine: returning ", max([-2.5,-abs(float(narray1)-float(narray2))/2]))
+            return max([-2.5,-abs(float(narray1)-float(narray2))/2])
+
+
+        if type(narray1) == str:
+            if 'SELECT' in narray1 and 'SELECT' in narray2:
+                if narray1 != narray2:
+                    print("cosine: returning -0.5")
+                    return -0.5
+            if narray1 == narray2:
+                print("cosine: returning 0")
+                return 0
+        print("cosine: returning -2.5")
+        return -2.5
+
+    def set_response(self,*args):
+        print("set_response:", args)
+        args = list(args)
+        if len(args) >= 4:
+            production_selected = args[4]
+
+            for history in self.history:
+                if not history['actr']:
+                    history['actr'] = production_selected.upper()
+
+
+
+        if args[0] == "_SELECT_ARMY":
+            pass#self.response = [_SELECT_ARMY, [_SELECT_ALL]]
+        elif args[0] == "_MOVE_SCREEN":
+            pass#self.response = [_MOVE_SCREEN, [_NOT_QUEUED, [args[2][1],args[3][1]]]]
+        else:
+            pass
+
+
+        #print("RES:", self.response)
+
+        self.do_tic()
+
+        return 1
 
     def build_model(self):
         self.placeholders = _get_placeholders(self.spatial_dim)
@@ -441,11 +687,34 @@ class ActorCriticAgent:
 
     def step(self, obs):
         feed_dict = self._input_to_feed_dict(obs)
+        w = False
+        #start ACT-R (after the game has started)
+        if self.game_start_wait_flag:
+            self.history = []
+            self.old_fc1 = None
+            chk = self.actr.define_chunks(
+                ['wait', 'false'])
 
+            self.actr.schedule_simple_event_now("set-buffer-chunk",
+                                                ['imaginal', chk[0]])  # self.actr.set_buffer_chunk('imaginal',chk[0])
+            actrThread = threading.Thread(target=self.actr.run, args=[300])
+            actrThread.start()
+            self.game_start_wait_flag = False
+
+        #
+        #for key in obs:
+        #    print("KEY", key)
+        #insert some ACTR things
+
+        print("here")
+        # this is a temporary solution for resetting...
 
         #TODO obs["available_action_ids"] is incorrect, I think.
         #TODO what it SEEMS to be is an array of binary values. 1 = action available, 0 = not available.
 
+        if not obs["available_action_ids"][0][_MOVE_SCREEN]:
+            current_goal_chunk = self.actr.buffer_chunk('goal')
+            self.actr.mod_chunk(current_goal_chunk[0], "state", "select-army")
 
 
         print("here2")
@@ -471,6 +740,22 @@ class ActorCriticAgent:
         w = self.push_observation([action_id,spatial_action_2d,value_estimate,fc1_narray])
         while not w:
             time.sleep(0.00001)
+        current_imaginal_chunk = self.actr.buffer_chunk('imaginal')
+        #print("current_imaginal_chunk", current_imaginal_chunk[0])
+        self.actr.mod_chunk(current_imaginal_chunk[0], "wait", "false")
+        self.RHSWaitFlag = False
+        print("RHSWaitFlag set to False")
+        # self.actr.schedule_simple_event_now("mod-chunk-fct", 'imaginal', 'wait', 'false')
+
+        print("here3")
+        while not self.tickable:
+            time.sleep(0.00001)
+
+        self.stepped = True
+        self.tickable = False
+
+        print("here4")
+
 
 
         spatial_action_2d = np.array(
