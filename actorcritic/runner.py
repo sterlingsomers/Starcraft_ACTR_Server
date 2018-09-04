@@ -10,7 +10,8 @@ from common.util import calculate_n_step_reward, general_n_step_advantage, combi
 import tensorflow as tf
 from absl import flags
 
-
+#import actr
+import episode_utils
 
 
 
@@ -29,6 +30,10 @@ class Runner(object):
     ):
         self.envs = envs
         self.agent = agent
+        self.agent.runner = self
+        self.history = []
+        self.episode_saliences = {}
+        self.response_production = None
         self.obs_processer = ObsProcesser()
         self.action_processer = ActionProcesser(dim=flags.FLAGS.resolution)
         self.n_steps = n_steps
@@ -137,14 +142,30 @@ class Runner(object):
         # action = agent(state)
         action_ids, spatial_action_2ds, value_estimate = self.agent.step(latest_obs) # (MINE) AGENT STEP = INPUT TO NN THE CURRENT STATE AND OUTPUT ACTION
 
+        if action_ids[0] != 7:
+            history_dict = self.agent.history_dict
+            if self.agent.episode_filter.this_step(history_dict):
+                chunk = ['isa', 'observation', 'green', int(history_dict['green']),
+                         'orange', int(history_dict['orange']),
+                         'blocking', int(history_dict['blocking'])]  # 'vector', str(list(args[3])), 'value_estimate', float(args[2][0]) ]
 
+                chk = self.agent.actr.define_chunks(chunk)
+                self.agent.actr.schedule_simple_event_now("set-buffer-chunk", ['imaginal', chk[0]])
+                self.agent.actr.run(10)
+                #epside saliences will be set at this point
+                #so should response_production
+                self.history.append((history_dict,self.episode_saliences,self.response_production))
+            print("actr ran")
 
         print('action: ', actions.FUNCTIONS[action_ids[0]].name, 'on', 'x=', spatial_action_2ds[0][0], 'y=', spatial_action_2ds[0][1], 'Value=', value_estimate[0])
         actions_pp = self.action_processer.process(action_ids, spatial_action_2ds)
         # state(t+1) = env.step(action)
         obs_raw = self.envs.step(actions_pp) # (MINE) ENVS STEP = THE ACTUAL ENVIRONMENTAL STEP
+
         latest_obs = self.obs_processer.process(
             obs_raw)  # (MINE) =process(state(t+1)). Processes all inputs/obs from all timesteps
+
+
 
         # Check for all t (timestep/observation in obs_raw which t has the last state true, meaning it is the last state
         for t in obs_raw:

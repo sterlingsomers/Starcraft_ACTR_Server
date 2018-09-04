@@ -134,7 +134,7 @@ class ActorCriticAgent:
         #load the ACT-R model
         self.actr = actr
         self.actr.add_command("cosine-similarity", self.cosine_similarity, "similarity hook function")
-        self.actr.load_act_r_model("/Users/paulsomers/StarcraftMAC/MyAgents/AAAI_first_analysis.lisp")
+        self.actr.load_act_r_model("/Users/paulsomers/StarcraftMAC/MyAgents/AAAI_first_analysis_alternate.lisp")
         #add the blending history
         actr.record_history("blending-trace")
         self.actr.add_command("tic", self.do_tic)
@@ -297,7 +297,7 @@ class ActorCriticAgent:
         #print("blend_data", blend_data)
         #print("probs...")
         probs = [x[1][3] for x in self.access_by_key("CHUNKS",blend_data[1])]
-        keys_list = ['GREEN','ORANGE','BETWEEN']
+        keys_list = ['GREEN','ORANGE','BLOCKING']
         FKs = [self.access_by_key(key.upper(), self.access_by_key('RESULT-CHUNK', blend_data[1])) for key in keys_list]
         #FKs = [int(eval(x.capitalize())) for x in FKs]
         chunk_names = [x[0] for x in self.access_by_key('CHUNKS', blend_data[1])]
@@ -349,7 +349,10 @@ class ActorCriticAgent:
         for s in results:
             self.saliences.append(MP/t * sum(s))
 
-        print("salience done", self.saliences)
+        #print("salience done", self.saliences)
+        for key,salience in zip(keys_list, self.saliences):
+            self.runner.episode_saliences[key] = salience
+
 
 
     def blend(self):
@@ -436,7 +439,7 @@ class ActorCriticAgent:
         history_dict = args[0]
 
 
-        chunk = ['isa', 'observation', 'wait', 'false', 'green', int(history_dict['green']),
+        chunk = ['isa', 'observation',  'green', int(history_dict['green']),
                  'orange', int(history_dict['orange']),
                      'blocking', int(history_dict['blocking'])]#'vector', str(list(args[3])), 'value_estimate', float(args[2][0]) ]
 
@@ -515,7 +518,7 @@ class ActorCriticAgent:
         args = list(args)
         if len(args) >= 4:
             production_selected = args[4]
-
+            self.runner.response_production = args[4]
             for history in self.history:
                 if not history['actr']:
                     history['actr'] = production_selected.upper()
@@ -654,13 +657,13 @@ class ActorCriticAgent:
         if self.game_start_wait_flag:
             self.history = []
             self.old_fc1 = None
-            chk = self.actr.define_chunks(
-                ['wait', 'false'])
+            #chk = self.actr.define_chunks(
+            #    ['wait', 'false'])
 
-            self.actr.schedule_simple_event_now("set-buffer-chunk",
-                                                ['imaginal', chk[0]])  # self.actr.set_buffer_chunk('imaginal',chk[0])
-            actrThread = threading.Thread(target=self.actr.run, args=[300])
-            actrThread.start()
+            #self.actr.schedule_simple_event_now("set-buffer-chunk",
+            #                                    ['imaginal', chk[0]])  # self.actr.set_buffer_chunk('imaginal',chk[0])
+            #actrThread = threading.Thread(target=self.actr.run, args=[300])
+            #actrThread.start()
             self.game_start_wait_flag = False
 
         #
@@ -698,29 +701,29 @@ class ActorCriticAgent:
 
 
         self.obs = obs
-        history_dict = self.episode_filter.obs_to_dict(obs)
+        self.history_dict = self.episode_filter.obs_to_dict(obs)
 
-        if not action_id[0] == 7: #if it hasn't yet selected the agent, just let it
-            if self.episode_filter.this_step(history_dict):
-
-                w = self.push_observation([history_dict,action_id,spatial_action_2d,value_estimate,fc1_narray])
-                #time.sleep(2)
-                while not w:
-                   time.sleep(0.00001)
-                #current_imaginal_chunk = self.actr.buffer_chunk('imaginal')
-                #print("current_imaginal_chunk", current_imaginal_chunk[0])
-                #self.actr.mod_chunk(current_imaginal_chunk[0], "wait", "false")
-                self.RHSWaitFlag = False
-                print("RHSWaitFlag set to False")
-                self.actr.schedule_simple_event_now("ignore")
-                print("here3")
-                # while not self.tickable:
-                #    time.sleep(0.00001)
-
-                self.stepped = True
-                self.tickable = False
-
-                print("here4")
+        # if not action_id[0] == 7: #if it hasn't yet selected the agent, just let it
+        #     if self.episode_filter.this_step(history_dict):
+        #
+        #         w = self.push_observation([history_dict,action_id,spatial_action_2d,value_estimate,fc1_narray])
+        #         time.sleep(2)
+        #         #while not w:
+        #         #   time.sleep(0.00001)
+        #         #current_imaginal_chunk = self.actr.buffer_chunk('imaginal')
+        #         #print("current_imaginal_chunk", current_imaginal_chunk[0])
+        #         #self.actr.mod_chunk(current_imaginal_chunk[0], "wait", "false")
+        #         #self.RHSWaitFlag = False
+        #         #print("RHSWaitFlag set to False")
+        #         self.actr.schedule_simple_event_now("ignore")
+        #         print("here3")
+        #         # while not self.tickable:
+        #         #    time.sleep(0.00001)
+        #
+        #         self.stepped = True
+        #         self.tickable = False
+        #
+        #         print("here4")
 
 
         spatial_action_2d = np.array(
