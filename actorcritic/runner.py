@@ -147,7 +147,7 @@ class Runner(object):
             if self.agent.episode_filter.this_step(history_dict):
                 chunk = ['isa', 'observation', 'green', int(history_dict['green']),
                          'orange', int(history_dict['orange']),
-                         'blocking', int(history_dict['blocking']), 'vector', str(list(self.agent.fc1))]#, 'value_estimate', float(args[2][0]) ]
+                         'blocking', int(history_dict['blocking'])]#, 'value_estimate', float(args[2][0]) ]
 
                 chk = self.agent.actr.define_chunks(chunk)
                 self.agent.actr.schedule_simple_event_now("set-buffer-chunk", ['imaginal', chk[0]])

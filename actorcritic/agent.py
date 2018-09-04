@@ -134,7 +134,7 @@ class ActorCriticAgent:
         #load the ACT-R model
         self.actr = actr
         self.actr.add_command("cosine-similarity", self.cosine_similarity, "similarity hook function")
-        self.actr.load_act_r_model("/Users/paulsomers/StarcraftMAC/MyAgents/AAAI_first_analysis_alternate_vector.lisp")
+        self.actr.load_act_r_model("/Users/paulsomers/StarcraftMAC/MyAgents/AAAI_first_analysis_alternate_no_vector.lisp")
         #add the blending history
         actr.record_history("blending-trace")
         self.actr.add_command("tic", self.do_tic)
@@ -185,7 +185,7 @@ class ActorCriticAgent:
         #     random_number = random.uniform(0.0,10.0)
         #     ck.append(random_number)
 
-        chunks = pickle.load(open('chunks_vectors.p','rb'))
+        chunks = pickle.load(open('chunks_no_vectors.p','rb'))
 
 
         #add them to dm
@@ -455,7 +455,7 @@ class ActorCriticAgent:
         print("Cosine called.", narray1, narray2, type(narray1), type(narray2))
         if type(narray1) == int and type(narray2) == int:
             print("consine: returning (ints)", -0.6 * abs(narray1 - narray2))
-            return -0.6 * abs(narray1 - narray2)
+            return -0.8 * abs(narray1 - narray2)
         if narray1 == 'TRUE' or narray1 == 'FALSE':
             if narray1 == narray2:
                 print("cosine: returning 0")
