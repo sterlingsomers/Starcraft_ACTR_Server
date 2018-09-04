@@ -20,7 +20,7 @@ flags.DEFINE_bool("visualize", False, "Whether to render with pygame.")
 flags.DEFINE_integer("resolution", 32, "Resolution for screen and minimap feature layers.")
 flags.DEFINE_integer("step_mul", 8, "Game steps per agent step.")
 flags.DEFINE_integer("n_envs", 1, "Number of environments to run in parallel")
-flags.DEFINE_integer("episodes", 2, "Number of complete episodes")
+flags.DEFINE_integer("episodes", 26, "Number of complete episodes")
 flags.DEFINE_integer("n_steps_per_batch", None,
     "Number of steps per batch, if None use 8 for a2c and 128 for ppo")  # (MINE) TIMESTEPS HERE!!!
 flags.DEFINE_integer("all_summary_freq", 50, "Record all summaries every n batch")
@@ -28,7 +28,7 @@ flags.DEFINE_integer("scalar_summary_freq", 5, "Record scalar summaries every n 
 flags.DEFINE_string("checkpoint_path", "_files/models", "Path for agent checkpoints")
 flags.DEFINE_string("summary_path", "_files/summaries", "Path for tensorboard summaries")
 flags.DEFINE_string("model_name", "my_beacon_beta_model", "Name for checkpoints and tensorboard summaries")
-flags.DEFINE_integer("K_batches", 1,
+flags.DEFINE_integer("K_batches", 10,
     "Number of training batches to run in thousands, use -1 to run forever") #(MINE) not for now
 flags.DEFINE_string("map_name", "MoveToBeacon_random", "Name of a map to use.")
 flags.DEFINE_float("discount", 0.95, "Reward-discount for the agent")
@@ -181,7 +181,7 @@ def main():
     print("Okay. Work is done")
 
 
-    filepath = os.path.join('/Users/paulsomers/StarcraftMAC/MyAgents/data/','history.p')
+    filepath = os.path.join('/Users/paulsomers/StarcraftMAC/MyAgents/data/','history_vectors.p')
     pickle.dump(agent.history, open(filepath,'wb'))
     #_print(i)
     if FLAGS.training:

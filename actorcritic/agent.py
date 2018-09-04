@@ -307,7 +307,8 @@ class ActorCriticAgent:
                         'actr':False, 'chosen_action':chosen_action,
                         'neutral_x':neutral_x, 'neutral_y':neutral_y,
                         'enemy_x':enemy_x, 'enemy_y':enemy_y,
-                        'player_x':player_x,'player_y':player_y}
+                        'player_x':player_x,'player_y':player_y,
+                        'vector':args[3]}
         self.history.append(dict(history_dict))
 
 
