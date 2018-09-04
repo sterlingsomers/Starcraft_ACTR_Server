@@ -130,7 +130,7 @@
 
 
 
-(P select-green
+(P select-beacon
 ;   =goal>
 ;       state      do_action
    =imaginal>
@@ -140,9 +140,9 @@
     =imaginal>
 ;       wait       true
        action     nil
-    !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" 1 1 "select_green")
+    !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" 1 1 "select_beacon")
 )
-(P select-orange
+(P select-around
 ;   =goal>
 ;       state      do_action
    =imaginal>
@@ -152,7 +152,7 @@
     =imaginal>
 ;      wait       true
        action     nil
-    !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" 1 1 "select_orange")
+    !eval! ("set_response" "_MOVE_SCREEN" "_NOT_QUEUED" 1 1 "select_around")
 )
      
 

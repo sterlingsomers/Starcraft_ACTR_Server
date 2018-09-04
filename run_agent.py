@@ -180,12 +180,12 @@ def main():
 
     print("Okay. Work is done")
 
-    #pickle.dump(agent.history, open("history.p","wb"))
-    #_print(i)
+    filepath = os.path.join('/Users/paulsomers/StarcraftMAC/MyAgents/data/', 'actr_history_vector.p')
+    pickle.dump(agent.runner.history, open(filepath, 'wb'))
     if FLAGS.training:
         _save_if_training(agent)
     if not FLAGS.training:
-        envs.env.save_replay('/Users/constantinos/Documents/StarcraftMAC/MyAgents/')
+        pass#envs.env.save_replay('/Users/constantinos/Documents/StarcraftMAC/MyAgents/')
 
     envs.close()
 
