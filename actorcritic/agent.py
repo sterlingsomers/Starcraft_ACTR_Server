@@ -300,7 +300,7 @@ class ActorCriticAgent:
 
         chosen_action = 0
 
-        if orange_beacon:
+        if between:
             chosen_action = 1
 
         history_dict = {'green':green_beacon,'orange':orange_beacon,'blocking':between,
