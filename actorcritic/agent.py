@@ -185,21 +185,8 @@ class ActorCriticAgent:
         #     random_number = random.uniform(0.0,10.0)
         #     ck.append(random_number)
 
-        #chunks = pickle.load(open('chunks.p','rb'))
-        #I only 1 copy of all situations
-        chunks = []
-        chunks.append(['isa', 'decision', 'green', 1,
-                       'orange', 0,
-                       'blocking', 0,
-                       'action', 0])
-        chunks.append(['isa', 'decision', 'green', 1,
-                       'orange', 1,
-                       'blocking', 0,
-                       'action', 1])
-        chunks.append(['isa', 'decision', 'green', 1,
-                       'orange', 1,
-                       'blocking', 1,
-                       'action', 1])
+        chunks = pickle.load(open('chunks_vectors.p','rb'))
+
 
         #add them to dm
         for ck in chunks:
