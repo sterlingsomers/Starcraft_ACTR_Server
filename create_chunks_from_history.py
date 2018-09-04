@@ -9,7 +9,7 @@ import episode_utils
 
 
 input_filepath = os.path.join('/Users/paulsomers/StarcraftMAC/MyAgents/data/','history_vectors.p')
-output_filepath = os.path.join('/Users/paulsomers/StarcraftMAC/MyAgents/', 'chunks_vectors.p')
+output_filepath = os.path.join('/Users/paulsomers/StarcraftMAC/MyAgents/', 'chunks_no_vectors.p')
 
 minimum_history_length = 10
 maximum_history_length = 10
@@ -84,8 +84,7 @@ else:
     for case in viables:
         ck = ['isa', 'decision', 'green', int(case['green']),
               'orange', int(case['orange']), 'blocking', int(case['blocking']),
-              'action', case['chosen_action'],
-              'vector',repr(case['vector'].tolist())]
+              'action', case['chosen_action']]
         # 'value_estimate',repr(case['value_estimate']),
         # 'vector',repr(list(case['fc1']))]
 
