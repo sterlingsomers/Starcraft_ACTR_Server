@@ -134,7 +134,7 @@ class ActorCriticAgent:
         #load the ACT-R model
         self.actr = actr
         self.actr.add_command("cosine-similarity", self.cosine_similarity, "similarity hook function")
-        self.actr.load_act_r_model("/Users/paulsomers/StarcraftMAC/MyAgents/AAAI_first_analysis_alternate.lisp")
+        self.actr.load_act_r_model("/Users/paulsomers/StarcraftMAC/MyAgents/AAAI_first_analysis_alternate_vector.lisp")
         #add the blending history
         actr.record_history("blending-trace")
         self.actr.add_command("tic", self.do_tic)
