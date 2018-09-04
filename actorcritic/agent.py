@@ -455,7 +455,7 @@ class ActorCriticAgent:
         print("Cosine called.", narray1, narray2, type(narray1), type(narray2))
         if type(narray1) == int and type(narray2) == int:
             print("consine: returning (ints)", -0.6 * abs(narray1 - narray2))
-            return -0.8 * abs(narray1 - narray2)
+            return -0.6 * abs(narray1 - narray2)
         if narray1 == 'TRUE' or narray1 == 'FALSE':
             if narray1 == narray2:
                 print("cosine: returning 0")
