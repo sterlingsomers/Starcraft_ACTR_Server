@@ -124,7 +124,7 @@
 ;       wait       false
 
    !eval! ("do_salience")
-   ;!eval! ("Blend")
+   !eval! ("Blend")
 
 )
 

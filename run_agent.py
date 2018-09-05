@@ -180,7 +180,7 @@ def main():
 
     print("Okay. Work is done")
 
-    filepath = os.path.join('/Users/paulsomers/StarcraftMAC/MyAgents/data/', 'actr_history_vector.p')
+    filepath = os.path.join('/Users/paulsomers/StarcraftMAC/MyAgents/data/', 'actr_history_vector_test.p')
     pickle.dump(agent.runner.history, open(filepath, 'wb'))
     if FLAGS.training:
         _save_if_training(agent)

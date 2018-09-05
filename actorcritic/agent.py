@@ -142,7 +142,7 @@ class ActorCriticAgent:
         self.actr.add_command("set_response", self.set_response)
         self.actr.add_command("RHSWait", self.RHSWait)
         self.actr.add_command("GameStartWait", self.game_start_wait)
-        #self.actr.add_command("Blend", self.blend)
+        self.actr.add_command("Blend", self.blend)
 
         #add a function for computing the salience after the production has fired.
         #seems sensible...
@@ -194,17 +194,17 @@ class ActorCriticAgent:
 
         # #organize those chunks into categories (dict)
         # #for use when filtering durig "Blend" command
-        # self.dict_dm = {(1,0,0,0):[],
-        #                 (0,1,0,0):[],
-        #                 (1,1,0,0):[],
-        #                 (1,1,1,0):[],
-        #                 (1,1,1,1):[]}
-        # for ck in chunks:
-        #     keys = (ck[3],
-        #             ck[5],
-        #             ck[7],
-        #             ck[13])
-        #     self.dict_dm[keys].append(ck[11])
+        self.dict_dm = {(1,0,0,0):[],
+                        (0,1,0,0):[],
+                        (1,1,0,0):[],
+                        (1,1,1,0):[],
+                        (1,1,1,1):[]}
+        for ck in chunks:
+            keys = (ck[3],
+                    ck[5],
+                    ck[7],
+                    ck[9])
+            self.dict_dm[keys].append(ck[11])
 
 
 
@@ -343,7 +343,7 @@ class ActorCriticAgent:
 
 
     def blend(self):
-        return 0
+
         #narray1 = np.array(eval(narray1))
         #narray2 = np.array(eval(narray2))
         #ed = np.linalg.norm(narray1 - narray2)
@@ -353,8 +353,11 @@ class ActorCriticAgent:
         smallest_distance = 10000
         distance_threshold = 18
         ed = smallest_distance + 1
-        for x in ('green','orange','between','action','vector','value_estimate'):
-            values.append(self.actr.chunk_slot_value(current_blending_chunk,x))
+        for x in ('green','orange','blocking','action','vector'):
+            if (x == 'action'):
+                values.append(round(self.actr.chunk_slot_value(current_blending_chunk,x)))
+            else:
+                values.append(self.actr.chunk_slot_value(current_blending_chunk,x))
         values = tuple(values)
         if len(self.dict_dm[values[0:4]]) >= 5:
             return 1
@@ -366,7 +369,6 @@ class ActorCriticAgent:
                    'orange', values[1],
                    'between', values[2],
                    'vector', values[4],
-                   'value_estimate', values[5],
                    'action', values[3]]
             self.actr.add_dm(chk)
             return 1
@@ -385,7 +387,6 @@ class ActorCriticAgent:
                    'orange',values[1],
                    'between',values[2],
                    'vector',values[4],
-                   'value_estimate',values[5],
                    'action',values[3]]
             self.actr.add_dm(chk)
 
