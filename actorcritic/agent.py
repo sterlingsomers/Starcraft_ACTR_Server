@@ -359,7 +359,7 @@ class ActorCriticAgent:
             else:
                 values.append(self.actr.chunk_slot_value(current_blending_chunk,x))
         values = tuple(values)
-        if len(self.dict_dm[values[0:4]]) >= 5:
+        if len(self.dict_dm[values[0:4]]) >= 25:
             return 1
 
         if not self.dict_dm[values[0:4]]:
