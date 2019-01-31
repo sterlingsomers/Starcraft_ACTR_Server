@@ -165,7 +165,8 @@ class ActorCriticAgent:
         #the saliences dictionary should be [[0.1,0.5,0.3],[..]]
         #actually, it probably can just be the last salience calculations
         #[V1,V2,V3..]
-        self.saliences = []
+        self.saliences = {}
+        self.blend_values = []
 
         #Add some chunks to DM
         # chunks = [['isa', 'decision', 'green', 'True', 'orange', 'True', 'between', 'True', 'action', 'select-around'],
@@ -182,7 +183,7 @@ class ActorCriticAgent:
         #     random_number = random.uniform(0.0,10.0)
         #     ck.append(random_number)
 
-        chunks = pickle.load(open('chunks2.p','rb'))
+        chunks = pickle.load(open('chunks_transposed.p','rb'))
 
         #add them to dm
         for ck in chunks:
@@ -190,17 +191,17 @@ class ActorCriticAgent:
 
         #organize those chunks into categories (dict)
         #for use when filtering durig "Blend" command
-        self.dict_dm = {(1,0,0,0):[],
-                        (0,1,0,0):[],
-                        (1,1,0,0):[],
-                        (1,1,1,0):[],
-                        (1,1,1,1):[]}
-        for ck in chunks:
-            keys = (ck[3],
-                    ck[5],
-                    ck[7],
-                    ck[13])
-            self.dict_dm[keys].append(ck[11])
+        # self.dict_dm = {(1,0,0,0):[],
+        #                 (0,1,0,0):[],
+        #                 (1,1,0,0):[],
+        #                 (1,1,1,0):[],
+        #                 (1,1,1,1):[]}
+        # for ck in chunks:
+        #     keys = (ck[3],
+        #             ck[5],
+        #             ck[7],
+        #             ck[13])
+        #     self.dict_dm[keys].append(ck[11])
 
 
 
@@ -270,7 +271,9 @@ class ActorCriticAgent:
         return list[list.index(key) + 1]
 
     def do_salience(self):
-        self.saliences = []
+        print("do_salience called")
+        import pdb;
+        self.saliences = {}
         #time = actr.get_history_data("blending-times")
         #print("time...", time)
         blend_data = actr.get_history_data("blending-trace")
@@ -309,29 +312,66 @@ class ActorCriticAgent:
                 tss[i].append(probs[i] * dSim)
             ts2.append(sum(tss[i]))
 
-        vios = [actr.chunk_slot_value(x, 'action') for x in chunk_names]
+        viosList = []
+        viosList.append([actr.chunk_slot_value(x,'select-green') for x in chunk_names])
+        viosList.append([actr.chunk_slot_value(x, 'select-orange') for x in chunk_names])
+        viosList.append([actr.chunk_slot_value(x, 'select-around') for x in chunk_names])
 
-        results = []
-        for i in range(len(FKs)):
-            tmp = 0
-            sub = []
-            for j in range(len(probs)):
-                if FKs[i] > vjks[j][i]:
-                    dSim = -1 / n
-                elif FKs[i] == vjks[j][i]:
-                    dSim = 0
-                else:
-                    dSim = 1 / n
-                tmp = probs[j] * (dSim - ts2[i]) * vios[j]  # sum(tss[i])) * vios[j]
-                sub.append(tmp)
-            results.append(sub)
+        # compute (7)
+        rturn = []
+        for vios in viosList:
+            results = []
+            for i in range(len(FKs)):
+                tmp = 0
+                sub = []
+                for j in range(len(probs)):
+                    if FKs[i] > vjks[j][i]:
+                        dSim = -1 / n
+                    elif FKs[i] == vjks[j][i]:
+                        dSim = 0
+                    else:
+                        dSim = 1 / n
+                    tmp = probs[j] * (dSim - ts2[i]) * vios[j]  # sum(tss[i])) * vios[j]
+                    sub.append(tmp)
+                results.append(sub)
+
+            #print("compute S complete")
+            rturn.append(results)
+
+        #vios = [actr.chunk_slot_value(x, 'select-green') for x in chunk_names]
+        #
+        # results = []
+        # for i in range(len(FKs)):
+        #     tmp = 0
+        #     sub = []
+        #     for j in range(len(probs)):
+        #         if FKs[i] > vjks[j][i]:
+        #             dSim = -1 / n
+        #         elif FKs[i] == vjks[j][i]:
+        #             dSim = 0
+        #         else:
+        #             dSim = 1 / n
+        #         tmp = probs[j] * (dSim - ts2[i]) * vios[j]  # sum(tss[i])) * vios[j]
+        #         sub.append(tmp)
+        #     results.append(sub)
 
         MP = actr.get_parameter_value(':mp')
         t = self.access_by_key('TEMPERATURE', blend_data[1])
+        factors = ['GREEN','ORANGE','BETWEEN']
+        results_factors = ['select-green','select-orange','select-around']
+        results = rturn
+        for sums,result_factor in zip(results,results_factors):
+            self.saliences[result_factor] = []
+            for s,factor in zip(sums,factors):
+                self.saliences[result_factor].append(MP/t * sum(s))
 
-        for s in results:
-            self.saliences.append(MP/t * sum(s))
-
+        #import pdb; pdb.set_trace()
+        # for s in results:
+        #     self.saliences.append(MP/t * sum(s))
+        self.blend_values = []
+        blend_keys = ['SELECT-GREEN','SELECT-ORANGE','SELECT-AROUND']
+        BV = [self.access_by_key(key.upper(), self.access_by_key('RESULT-CHUNK', blend_data[1])) for key in blend_keys]
+        self.blend_values = BV[:]
         print("salience done", self.saliences)
 
 

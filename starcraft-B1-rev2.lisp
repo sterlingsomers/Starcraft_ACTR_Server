@@ -41,7 +41,7 @@
 
 
 (chunk-type initialize state)
-(chunk-type decision green orange between vector value_estimate action)
+(chunk-type decision green orange between vector value_estimate select-green select-orange select-around)
 (chunk-type action value)
 (chunk-type game-state value)
 
@@ -167,7 +167,9 @@
        between    =between
        vector     =vector
        value_estimate =value_estimate
-       action     =action
+       select-green     =sg
+       select-orange    =so
+       select-around    =sa
    =imaginal>
    ?blending>
        state      free
@@ -177,7 +179,9 @@
        state      do_action
    @blending>
    @imaginal>
-       action     =action
+       select-green =sg
+       select-orange =so
+       select-around =sa
        wait       false
 
    !eval! ("do_salience")
@@ -189,7 +193,7 @@
    =goal>
        state      do_action
    =imaginal>
-       action     select-green
+    >   select-green     0.5
      - wait       true
 
 ==>
@@ -205,7 +209,7 @@
    =goal>
        state      do_action
    =imaginal>
-       action     select-orange
+    >   select-orange     0.5
      - wait       true
 ==>
     =goal>
