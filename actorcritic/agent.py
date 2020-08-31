@@ -18,7 +18,7 @@ import math
 import time
 import threading
 import random
-import json
+#import json
 
 import pickle
 
@@ -718,6 +718,7 @@ class ActorCriticAgent:
         return {k + ":0": v for k, v in input_dict.items()}
 
     def step(self, obs):
+        #TODO get rid of the thread in favor of pyactup
         feed_dict = self._input_to_feed_dict(obs)
         w = False
         #start ACT-R (after the game has started)

@@ -16,7 +16,7 @@ import matplotlib.gridspec as gridspec
 import threading
 
 
-#style.use('fivethirtyeight')
+#style.use('fivethirtyeight') g
 fig, (ax1,ax3,ax4,ax5) = plt.subplots(4)
 plt.tight_layout()
 #ax1.title = "Action Selection"
