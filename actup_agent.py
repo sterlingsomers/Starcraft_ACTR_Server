@@ -175,6 +175,7 @@ class ActupAgent():
             print(useless_obs_raw[-1].reward,useless_obs_raw[-1].last())
             if useless_obs_raw[-1].reward:
                 done = True
+                self.episode_counter += 1
             if useless_obs_raw[-1].last():
                 done = True
 

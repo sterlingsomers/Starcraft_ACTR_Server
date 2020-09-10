@@ -183,7 +183,7 @@ def main():
             pass
     else: # Test the agent
         try:
-            while runner.episode_counter <= (FLAGS.episodes - 1):
+            while runner.episode_counter <= (FLAGS.episodes - 1) and actupAgent.episode_counter <= (FLAGS.episodes - 1):
                 # You need the -1 as counting starts from zero so for counter 3 you do 4 episodes
 
                 # runner.run_trained_batch()  # (MINE) HERE WE RUN MAIN LOOP for while true
