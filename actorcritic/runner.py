@@ -49,6 +49,7 @@ class Runner(object):
         obs = self.envs.reset()
         self.latest_obs = self.obs_processer.process(obs)
 
+
     def _log_score_to_tb(self, score):
         summary = tf.Summary()
         summary.value.add(tag='sc2/episode_score', simple_value=score)
@@ -139,7 +140,7 @@ class Runner(object):
 
 
 
-        print('action: ', actions.FUNCTIONS[action_ids[0]].name, 'on', 'x=', spatial_action_2ds[0][0], 'y=', spatial_action_2ds[0][1], 'Value=', value_estimate[0])
+        # print('action: ', actions.FUNCTIONS[action_ids[0]].name, action_ids, 'on', 'x=', spatial_action_2ds[0][0], 'y=', spatial_action_2ds[0][1], 'Value=', value_estimate[0])
         actions_pp = self.action_processer.process(action_ids, spatial_action_2ds)
         # state(t+1) = env.step(action)
         obs_raw = self.envs.step(actions_pp) # (MINE) ENVS STEP = THE ACTUAL ENVIRONMENTAL STEP
@@ -149,6 +150,7 @@ class Runner(object):
         # Check for all t (timestep/observation in obs_raw which t has the last state true, meaning it is the last state
         for t in obs_raw:
             if t.last():
+                print(t.last(), t.reward)
                 self._handle_episode_end(t)
 
         self.latest_obs = latest_obs # (MINE) state(t) = state(t+1), the usual s=s'

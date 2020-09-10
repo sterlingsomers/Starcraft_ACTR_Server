@@ -9,18 +9,12 @@ from actorcritic.policy import FullyConvPolicy
 from common.preprocess import ObsProcesser, FEATURE_KEYS, AgentInputTuple
 from common.util import weighted_random_sample, select_from_each_row, ravel_index_pairs
 
+from absl import flags
 
 #TODO why doesn't it already import the features?
 from pysc2.lib import features
 
-import actr
-import math
-import time
-import threading
-import random
-#import json
-
-import pickle
+import pyactup
 
 
 from scipy.sparse.linalg import svds
@@ -130,26 +124,6 @@ class ActorCriticAgent:
         self.clip_epsilon = clip_epsilon
         self.policy = policy
 
-        #load the ACT-R model
-        self.actr = actr
-        self.actr.add_command("cosine-similarity", self.cosine_similarity, "similarity hook function")
-        self.actr.load_act_r_model("/Users/paulsomers/StarcraftMAC/MyAgents/starcraft-B1-rev2.lisp")
-        #add the blending history
-        actr.record_history("blending-trace")
-        self.actr.add_command("tic", self.do_tic)
-        self.actr.add_command("ignore", self.ignore)
-        self.actr.add_command("set_response", self.set_response)
-        self.actr.add_command("RHSWait", self.RHSWait)
-        self.actr.add_command("GameStartWait", self.game_start_wait)
-        self.actr.add_command("Blend", self.blend)
-
-        #add a function for computing the salience after the production has fired.
-        #seems sensible...
-        self.actr.add_command("do_salience", self.do_salience)
-
-
-        #network activity
-        self.fc1 = 0
 
         #some act-r items
         self.tickable = False
@@ -168,40 +142,18 @@ class ActorCriticAgent:
         self.saliences = {}
         self.blend_values = []
 
-        #Add some chunks to DM
-        # chunks = [['isa', 'decision', 'green', 'True', 'orange', 'True', 'between', 'True', 'action', 'select-around'],
-        #           ['isa', 'decision', 'green', 'False', 'orange', 'True', 'between', 'False', 'action', 'select-orange'],
-        #           ['isa', 'decision', 'green', 'True', 'orange', 'False', 'between', 'False', 'action', 'select-green'],
-        #           ['isa', 'decision', 'green', 'True', 'orange', 'True', 'between', 'False', 'action', 'select-orange']]
-        # #add random vectors
+        self.memory = pyactup.Memory(noise=flags.FLAGS.memory_noise,decay=flags.FLAGS.memory_decay,temperature=flags.FLAGS.memory_temperature,
+                                     threshold=flags.FLAGS.memory_threshold,mismatch=flags.FLAGS.memory_mismatch,optimized_learning=False)
+
+
+
+        # chunks = pickle.load(open('chunks_transposed.p','rb'))
+        #
+        # #add them to dm
         # for ck in chunks:
-        #     ck.append('vector')
-        #     random_vector = np.random.randint(100,size=256)
-        #     str1 = str(list(random_vector))
-        #     ck.append(str1)
-        #     ck.append('value_estimate')
-        #     random_number = random.uniform(0.0,10.0)
-        #     ck.append(random_number)
+        #     self.actr.add_dm(ck)
 
-        chunks = pickle.load(open('chunks_transposed.p','rb'))
 
-        #add them to dm
-        for ck in chunks:
-            self.actr.add_dm(ck)
-
-        #organize those chunks into categories (dict)
-        #for use when filtering durig "Blend" command
-        # self.dict_dm = {(1,0,0,0):[],
-        #                 (0,1,0,0):[],
-        #                 (1,1,0,0):[],
-        #                 (1,1,1,0):[],
-        #                 (1,1,1,1):[]}
-        # for ck in chunks:
-        #     keys = (ck[3],
-        #             ck[5],
-        #             ck[7],
-        #             ck[13])
-        #     self.dict_dm[keys].append(ck[11])
 
 
 
@@ -450,87 +402,69 @@ class ActorCriticAgent:
 
         return 1
 
-    def push_observation(self, args):
+    def create_obs_dict(self, obs, target=None):
         '''Return a dictionary of observations'''
         #args are:
         #[action_id,spatial_action_2d,value_estimate,fc1_narray]
 
-        player_relative = self.obs["player_relative_screen"]
+        player_relative = obs["player_relative_screen"]
         #print("PR", (player_relative == _PLAYER_NEUTRAL).nonzero())
-        orange_beacon = False
-        green_beacon = False
-        player = False
-        between = False
+        orange_beacon = 0
+        green_beacon = 0
+        player = 0
+        between = 0
+        obs_dict = {}
 
         neutral_x, neutral_y = (player_relative == _PLAYER_NEUTRAL).nonzero()[1:3]
         enemy_x, enemy_y = (player_relative == _PLAYER_HOSTILE).nonzero()[1:3]
         player_x, player_y = (player_relative == _PLAYER_FRIENDLY).nonzero()[1:3]
 
         if neutral_y.any():
-            green_beacon = True
+            green_beacon = 1
 
             if enemy_y.any():
-                orange_beacon = True
+                orange_beacon = 1
             if player_y.any():
-                player = True
+                player = 1
 
         if enemy_y.any():
-            orange_beacon = True
+            orange_beacon = 1
 
             if neutral_y.any():
-                green_beacon = True
+                green_beacon = 1
             if player_y.any():
-                player = True
-
-        print("push_observation:", orange_beacon, player, green_beacon)
-        if orange_beacon and player and green_beacon:
-            #check for blocking or overlap
-
-            #Determine if green is between orange and player
-            green_points = list(zip(neutral_x,neutral_y))
-            orange_points = list(zip(enemy_x, enemy_y))
-            player_points = list(zip(player_x, player_y))
-
-            #https: // stackoverflow.com / questions / 328107 / how - can - you - determine - a - point - is -between - two - other - points - on - a - line - segment
-            between = False
-            set_of_points_to_check_between = [(x,y) for x in player_points for y in orange_points]
-            #print("green points", green_points)
-            #print("orange points", orange_points)
-            #print("player_pionts", player_points)
-            #print("set of", set_of_points_to_check_between)
-            for points in set_of_points_to_check_between:
-                for green_point in green_points:
-                    if self.is_blocking(points[0],points[1],green_point):
-                        between = True
-            print("BETWEEN", between)
-
-        history_dict = {'green':green_beacon,'orange':orange_beacon,'blocking':between,
-                        'actr':False, 'chosen_action':'select_beacon'.upper()}
-        self.history.append(dict(history_dict))
+                player = 1
 
 
-        chunk = ['isa', 'game-state', 'wait', 'false', 'green', int(green_beacon), 'orange', int(orange_beacon),
-                     'between', int(between), 'vector', str(list(args[3])), 'value_estimate', float(args[2][0]) ]
-
-        chk = self.actr.define_chunks(chunk)
-        self.actr.schedule_simple_event_now("set-buffer-chunk", ['imaginal', chk[0]])
-
-
-            # print(neutral_y, len(neutral_y), min(neutral_y), max(neutral_y))
-
-        # if neutral_y.any():
-        #     chk = self.actr.define_chunks(['neutral_x', int(neutral_x.mean()), 'neutral_y', int(neutral_y.mean()),'wait', 'false'])
-        #     # the wait, false is for to make sure something other than the wait production fires.
+        # if orange_beacon and player and green_beacon:
+        #     #check for blocking or overlap
         #
-        #     #not sure I need the actrChunks list
-        #     #self.actrChunks.append(chk)
+        #     #Determine if green is between orange and player
+        #     green_points = list(zip(neutral_x,neutral_y))
+        #     orange_points = list(zip(enemy_x, enemy_y))
+        #     player_points = list(zip(player_x, player_y))
         #
-        #     #self.actr.schedule_simple_event_now("ignore")
-        #     #self.actr.set_buffer_chunk('imaginal', chk[0])
-        #     self.actr.schedule_simple_event_now("set-buffer-chunk", ['imaginal', chk[0]])#self.actr.set_buffer_chunk('imaginal',chk[0])
-        #     #self.actr.schedule_simple_event_now("ignore")
+        #     #https: // stackoverflow.com / questions / 328107 / how - can - you - determine - a - point - is -between - two - other - points - on - a - line - segment
+        #     between = False
+        #     set_of_points_to_check_between = [(x,y) for x in player_points for y in orange_points]
+        #     #print("green points", green_points)
+        #     #print("orange points", orange_points)
+        #     #print("player_pionts", player_points)
+        #     #print("set of", set_of_points_to_check_between)
+        #     for points in set_of_points_to_check_between:
+        #         for green_point in green_points:
+        #             if self.is_blocking(points[0],points[1],green_point):
+        #                 between = True
+        #     print("BETWEEN", between)
+        #
+        # history_dict = {'green':green_beacon,'orange':orange_beacon,'blocking':between,
+        #                 'actr':False, 'chosen_action':'select_beacon'.upper()}
+        #self.history.append(dict(history_dict))
+        if target == None:
+            obs_dict = {'green':green_beacon, 'orange': orange_beacon}
+        return obs_dict
 
-        return 1
+
     def cosine_similarity(self,narray1,narray2):
         print("Cosine called.", narray1, narray2, type(narray1), type(narray2))
         if type(narray1) == int and type(narray2) == int:
@@ -720,38 +654,13 @@ class ActorCriticAgent:
     def step(self, obs):
         #TODO get rid of the thread in favor of pyactup
         feed_dict = self._input_to_feed_dict(obs)
-        w = False
-        #start ACT-R (after the game has started)
-        if self.game_start_wait_flag:
-            self.history = []
-            self.old_fc1 = None
-            chk = self.actr.define_chunks(
-                ['wait', 'false'])
 
-            self.actr.schedule_simple_event_now("set-buffer-chunk",
-                                                ['imaginal', chk[0]])  # self.actr.set_buffer_chunk('imaginal',chk[0])
-            actrThread = threading.Thread(target=self.actr.run, args=[300])
-            actrThread.start()
-            self.game_start_wait_flag = False
-
-        #
-        #for key in obs:
-        #    print("KEY", key)
-        #insert some ACTR things
-
-        print("here")
-        # this is a temporary solution for resetting...
 
         #TODO obs["available_action_ids"] is incorrect, I think.
         #TODO what it SEEMS to be is an array of binary values. 1 = action available, 0 = not available.
 
-        if not obs["available_action_ids"][0][_MOVE_SCREEN]:
-            current_goal_chunk = self.actr.buffer_chunk('goal')
-            self.actr.mod_chunk(current_goal_chunk[0], "state", "select-army")
 
-
-        print("here2")
-
+        #Below is the stuff for the forward pass.  I don't need that now.
         action_id, spatial_action, value_estimate = self.sess.run(
             [self.sampled_action_id, self.sampled_spatial_action, self.value_estimate],
             feed_dict=feed_dict
@@ -770,25 +679,7 @@ class ActorCriticAgent:
 
         self.obs = obs
 
-        w = self.push_observation([action_id,spatial_action_2d,value_estimate,fc1_narray])
-        while not w:
-            time.sleep(0.00001)
-        current_imaginal_chunk = self.actr.buffer_chunk('imaginal')
-        #print("current_imaginal_chunk", current_imaginal_chunk[0])
-        self.actr.mod_chunk(current_imaginal_chunk[0], "wait", "false")
-        self.RHSWaitFlag = False
-        print("RHSWaitFlag set to False")
-        # self.actr.schedule_simple_event_now("mod-chunk-fct", 'imaginal', 'wait', 'false')
-
-        print("here3")
-        while not self.tickable:
-            time.sleep(0.00001)
-
-        self.stepped = True
-        self.tickable = False
-
-        print("here4")
-
+        obs_dict = self.create_obs_dict(obs)
 
 
         spatial_action_2d = np.array(

@@ -10,6 +10,7 @@ from absl import flags
 from actorcritic.agent import ActorCriticAgent, ACMode
 from actorcritic.runner import Runner, PPORunParams
 from common.multienv import SubprocVecEnv, make_sc2env, SingleEnv
+from actup_agent import ActupAgent
 
 import pickle
 
@@ -46,10 +47,17 @@ flags.DEFINE_float("ppo_lambda", 0.95, "lambda parameter for ppo")
 flags.DEFINE_integer("ppo_batch_size", None, "batch size for ppo, if None use n_steps_per_batch")
 flags.DEFINE_integer("ppo_epochs", 3, "epochs per update")
 flags.DEFINE_enum("agent_mode", ACMode.A2C, [ACMode.A2C, ACMode.PPO], "if should use A2C or PPO")
+flags.DEFINE_float('memory_temperature',1.0,'temperature for pyactup')
+flags.DEFINE_float('memory_decay', 0.00, 'decay')
+flags.DEFINE_float('memory_noise', 0.00, 'noise')
+flags.DEFINE_float('memory_mismatch', 1.0, 'mismatch penalty')
+flags.DEFINE_float('memory_threshold', -100.0, 'retrieval threshold')
+
 
 FLAGS(sys.argv)
 
 agent = 0
+
 
 #TODO this runner is maybe too long and too messy..
 full_chekcpoint_path = os.path.join(FLAGS.checkpoint_path, FLAGS.model_name)
@@ -138,6 +146,9 @@ def main():
     else:
         ppo_par = None
 
+    actupAgent = ActupAgent(envs)
+    reset_obs = actupAgent.reset()
+
     runner = Runner(
         envs=envs,
         agent=agent,
@@ -174,7 +185,10 @@ def main():
         try:
             while runner.episode_counter <= (FLAGS.episodes - 1):
                 # You need the -1 as counting starts from zero so for counter 3 you do 4 episodes
-                runner.run_trained_batch()  # (MINE) HERE WE RUN MAIN LOOP for while true
+
+                # runner.run_trained_batch()  # (MINE) HERE WE RUN MAIN LOOP for while true
+                chunk = actupAgent.decision(reset_obs)
+                actupAgent.memory.learn(**chunk)
         except KeyboardInterrupt:
             pass
 
