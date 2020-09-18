@@ -21,7 +21,7 @@ flags.DEFINE_bool("visualize", False, "Whether to render with pygame.")
 flags.DEFINE_integer("resolution", 32, "Resolution for screen and minimap feature layers.")
 flags.DEFINE_integer("step_mul", 8, "Game steps per agent step.")
 flags.DEFINE_integer("n_envs", 1, "Number of environments to run in parallel")
-flags.DEFINE_integer("episodes", 2, "Number of complete episodes")
+flags.DEFINE_integer("episodes", 1000, "Number of complete episodes")
 flags.DEFINE_integer("n_steps_per_batch", None,
     "Number of steps per batch, if None use 8 for a2c and 128 for ppo")  # (MINE) TIMESTEPS HERE!!!
 flags.DEFINE_integer("all_summary_freq", 50, "Record all summaries every n batch")
@@ -148,6 +148,7 @@ def main():
 
     actupAgent = ActupAgent(envs)
     reset_obs = actupAgent.reset()
+    time_done = False
 
     runner = Runner(
         envs=envs,
@@ -187,7 +188,10 @@ def main():
                 # You need the -1 as counting starts from zero so for counter 3 you do 4 episodes
 
                 # runner.run_trained_batch()  # (MINE) HERE WE RUN MAIN LOOP for while true
-                chunk = actupAgent.decision(reset_obs)
+                chunk,reset_obs,time_done = actupAgent.decision(reset_obs)
+                if time_done:
+                    reset_obs = actupAgent.reset()
+                    time_done = False
                 actupAgent.memory.learn(**chunk)
         except KeyboardInterrupt:
             pass
