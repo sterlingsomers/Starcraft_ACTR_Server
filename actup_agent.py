@@ -21,13 +21,14 @@ _SELECT_ALL = [0]
 
 class ActupAgent():
 
-    def __init__(self,env,noise=0.2,decay=0.5,temperature=1.0,threshold=-100.0,mismatch=1.5,optimized_learning=False):
+    def __init__(self,env,noise=0.0,decay=0.5,temperature=1.0,threshold=-100.0,mismatch=1.75,optimized_learning=False):
         self.memory = pyactup.Memory(noise,decay,temperature,threshold,mismatch)
         self.obs_processer = ObsProcesser()
         self.action_processer = ActionProcesser(dim=flags.FLAGS.resolution)
         self.env = env
         self.select_army = np.asarray([7],dtype=int)
         self.patrol_screen = np.asarray([333],dtype=int)
+        self.move_screen = np.asarray([331],dtype=int)
         self.noop = np.asarray([0],dtype=int)
         self.episode_counter = 0
         # self.action_map = {-1:self.select_green,0:self.select_orange}
@@ -137,7 +138,8 @@ class ActupAgent():
         noop = self.action_processer.process(self.noop,np.reshape(np.asarray([0,0],dtype=int),(1,2)))
         obs_raw = self.env.step(noop)
         obs = self.obs_processer.process(obs_raw)
-        player_xys = self.get_player_coords(obs)[0]
+        player_xys = self.get_player_coords(obs)#[0]
+
         player_xys = np.reshape(np.asarray([player_xys[0],player_xys[1]],dtype=int),(1,2))
 
         click_player = self.action_processer.process(self.select_army,player_xys)
@@ -150,6 +152,9 @@ class ActupAgent():
 
 
         obs_dict = self.create_obs_dict(obs)
+        self.first_obs_dict = obs_dict.copy()
+        print('obs dict', obs_dict)
+
 
         if green_beacon_xys and orange_beacon_xys:
             #Only do the blend if there's an option. Otherwise just click on what's available"
@@ -184,7 +189,7 @@ class ActupAgent():
         #action = self.memory.retrieve(partial=True,**obs_dict)['action']
 
         action = round(action)
-
+        print(obs_dict)
         if action: #i.e. go around
             reward,obs,time_done = self.go_around(obs, target_coords=coords,obstacle_coords=obstacle_coords,target_val=obs_dict['target'])
         if action == 0 and obs_dict['target'] == 1:
@@ -194,44 +199,6 @@ class ActupAgent():
 
 
         return {**obs_dict, 'value':reward},obs,time_done
-
-
-
-        #The following loop carries out the entire clicking plan: go-to-green, go-to-orange, or go-around-to-target
-        # done = False
-        # while not done:
-        #     location_coords = random.choice(coords)
-        #     location_coords = np.reshape(np.asarray([location_coords[0],location_coords[1]],dtype=int),(1,2))
-        #     try:
-        #         click_screen = self.action_processer.process(self.patrol_screen,location_coords)
-        #         useless_obs_raw = self.env.step(click_screen)
-        #
-        #     except ValueError:
-        #         useless_obs = self.obs_processer.process(useless_obs_raw)
-        #         player_xys = self.get_player_coords(useless_obs)[0]
-        #         player_xys = np.reshape(np.asarray([player_xys[0], player_xys[1]], dtype=int), (1, 2))
-        #         click_player = self.action_processer.process(self.select_army, player_xys)
-        #         useless_obs_raw = self.env.step(click_player)
-        #
-        #
-        #     print(useless_obs_raw[-1].reward,useless_obs_raw[-1].last())
-        #     if useless_obs_raw[-1].reward:
-        #         done = True
-        #         self.episode_counter += 1
-        #     if useless_obs_raw[-1].last():
-        #         done = True
-        #
-        # if green_beacon_xys and orange_beacon_xys:
-        #     #return {**obs_dict, **best_target[0], 'value':useless_obs_raw[-1].reward}
-        #     return {**obs_dict, 'target':best_target[0], 'value':useless_obs_raw[-1].reward}
-        # elif green_beacon_xys and not orange_beacon_xys:
-        #     return {**obs_dict, 'target': 1, 'value':useless_obs_raw[-1].reward}
-        # elif not green_beacon_xys and orange_beacon_xys:
-        #     return {**obs_dict, 'target': 0, 'value':useless_obs_raw[-1].reward}
-        #     # for t in useless_obs_raw:
-        #     #     if t.last():
-        #     #         self.episode_counter += 1
-        #     #         done = True
 
 
     def get_around_coords(self,obs,target_coords,obstacle_coords):
@@ -278,14 +245,18 @@ class ActupAgent():
         else:
             print("PROBLEM!")
             return []
-        return player_points
+        if len(player_points) > 1:
+            return random.choice(player_points)
+        return player_points[0]
 
     def go_around(self,obs,target_coords=[],obstacle_coords=[],target_val=0):
         noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
         obs_raw = self.env.step(noop)
         obs = self.obs_processer.process(obs_raw)
         target_map = {1:'green', 0:'orange'}
-        player_xys = self.get_player_coords(obs)[0]
+        player_xys = self.get_player_coords(obs)#[0]
+
+        print("go around target", target_val)
         # alt_player = np.where(obs['player_relative_screen'] == 1)
         # alt_player = alt_player[1:]
         # alt_player = (alt_player[0][0],alt_player[1][0])
@@ -313,6 +284,54 @@ class ActupAgent():
         centroid_obstacle_xs = [p[0] for p in obstacle_coords]
         centroid_obstacle_ys = [p[1] for p in obstacle_coords]
         obstacle_centroid = (max(centroid_obstacle_xs) + min(centroid_obstacle_xs)) / 2, (max(centroid_obstacle_ys) + min(centroid_obstacle_ys)) / 2
+
+        distances = [0]
+        d = 2
+        while min(distances) < 5:
+            d += 0.5
+            a1 = player_xys[0]
+            a2 = player_xys[1]
+            b1 = obstacle_centroid[0]
+            b2 = obstacle_centroid[1]
+
+            if b1 - a1 < 0.001:
+                a1 += 0.001
+
+            y1 = b2 + (((d ** 2) / (1 + (((b2 - a2) / (b1 - a1)) ** 2))) ** 1 / 2)
+            y2 = b2 - (((d**2)/(1+(((b2-a2)/(b1-a1))**2)) )**1/2)
+
+            x1 = (((b2-a2)/(b1-a1)) * (b2-y1)) + b1
+            x2 = (((b2-a2)/(b1-a1)) * (b2-y2)) + b1
+
+            p1 = int(round(x1)), int(round(y1))
+            p2 = int(round(x2)), int(round(y2))
+
+            distances = [np.linalg.norm(np.array(p)-np.array(p1)) for p in obstacle_coords]
+
+        # ps = [p1,p2]
+        # p_dist = {p:np.linalg.norm(np.array(p)-np.array(target_centroid)) for p in ps}
+        # p_sorted = {k:v for k,v in sorted(p_dist.items(), key=lambda item: item[1])}
+        p1_distance = np.linalg.norm(np.array(p1)-np.array(target_centroid))
+        p2_distance = np.linalg.norm(np.array(p2)-np.array(target_centroid))
+        if p1_distance < p2_distance:
+            around1 = np.reshape(np.asarray(p1,dtype=int), (1,2))
+            around2 = np.reshape(np.asarray(p2,dtype=int), (1,2))
+        else:
+            around1 = np.reshape(np.asarray(p2, dtype=int), (1, 2))
+            around2 = np.reshape(np.asarray(p1, dtype=int), (1, 2))
+
+        around_point = around1
+
+
+        # around1 = np.reshape(np.asarray([p_], dtype=int), (1, 2))
+        # around2 = np.reshape(np.asarray([x2, y2], dtype=int), (1, 2))
+
+
+
+
+        # print('here...')
+
+
 
 
 
@@ -345,128 +364,140 @@ class ActupAgent():
         #         # around_point = (d/((1+(((z-v)/(w-u))**2))**1/2)) + u, ((-1*(d*(w-u)))/((z-v)*((1 + (((z-v)/(w-u))**2))**1/2)) ) + v
         #         # around_point = int(round(around_point[0])),int(round(around_point[1]))
         #         # around_point = np.reshape(np.asarray([around_point[0], around_point[1]], dtype=int), (1, 2))
-        p1,p2 = obstacle_coords[0],obstacle_coords[0]
-        d = 2
-        while p1 in obstacle_coords and p2 in obstacle_coords:
-            d += 2.5
-            a1 = player_xys[0]
-            a2 = player_xys[1]
-            b1 = obstacle_centroid[0]
-            b2 = obstacle_centroid[1]
 
-            if b1 - a1 < 0.001:
-                a1 += 0.001
-
-            y1 = b2 + (((d**2)/(1+(((b2-a2)/(b1-a1))**2)) )**1/2)
-            y2 = b2 - (((d**2)/(1+(((b2-a2)/(b1-a1))**2)) )**1/2)
-
-            x1 = (((b2-a2)/(b1-a1)) * (b2-y1)) + b1
-            x2 = (((b2-a2)/(b1-a1)) * (b2-y2)) + b1
-
-            try:
-
-                p1 = int(round(x1)),int(round(y1))
-            except ValueError:
-                print('troubles...debug here')
-            try:
-                p2 = int(round(x2)),int(round(y2))
-            except ValueError:
-                print('troubles2 debug ere')
-
-        around1 = np.reshape(np.asarray([x1, y1], dtype=int), (1, 2))
-        around2 = np.reshape(np.asarray([x2, y2], dtype=int), (1, 2))
-
-        around_point = around1
-
-
-
-
+        ####
+        # p1,p2 = obstacle_coords[0],obstacle_coords[0]
+        # d = 2
+        # while p1 in obstacle_coords and p2 in obstacle_coords:
+        #     d += 3.25
+        #     a1 = player_xys[0]
+        #     a2 = player_xys[1]
+        #     b1 = obstacle_centroid[0]
+        #     b2 = obstacle_centroid[1]
+        #
+        #     if b1 - a1 < 0.001:
+        #         a1 += 0.001
+        #
+        #     y1 = b2 + (((d**2)/(1+(((b2-a2)/(b1-a1))**2)) )**1/2)
+        #     y2 = b2 - (((d**2)/(1+(((b2-a2)/(b1-a1))**2)) )**1/2)
+        #
+        #     x1 = (((b2-a2)/(b1-a1)) * (b2-y1)) + b1
+        #     x2 = (((b2-a2)/(b1-a1)) * (b2-y2)) + b1
+        #
+        #     try:
+        #
+        #         p1 = int(round(x1)),int(round(y1))
+        #     except ValueError:
+        #         print('troubles...debug here')
+        #     try:
+        #         p2 = int(round(x2)),int(round(y2))
+        #     except ValueError:
+        #         print('troubles2 debug ere')
+        #
+        # around1 = np.reshape(np.asarray([x1, y1], dtype=int), (1, 2))
+        # around2 = np.reshape(np.asarray([x2, y2], dtype=int), (1, 2))
+        #
+        # around_point = around1
+        #
+        #
+        #
+        #
         done = False
-        old_player_xys = (-1,-1)
-        fixme = False
+        bad_end = False
+        previous_player_xys = (-1,-1)
+        VerrCount = 0
         while not done:
+            #first check that we didn't hit a beacon or time has ended
+            if obs_raw[-1].reward:
+                noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
+                updated_obs_raw = self.env.step(noop)
+                updated_obs = self.obs_processer.process(obs_raw)
+                self.episode_counter += 1
+                if obs_raw[-1].reward == 1:
+                    reward = -1
+                    bad_end = True
+                else:
+                    reward = obs_raw[-1].reward
+                return -1,updated_obs,bad_end
+
+
+            if obs_raw[-1].last():
+                noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
+                updated_obs_raw = self.env.step(noop)
+                updated_obs = self.obs_processer.process(obs_raw)
+                self.episode_counter += 1
+                bad_end = True
+                return -1, updated_obs, bad_end
+            #try clicking to the around point
             try:
 
                 click_screen = self.action_processer.process(self.patrol_screen, around_point)
                 obs_raw = self.env.step(click_screen)
 
-
-
-
+            #If there's a valueError - it's probably because the agent isn't selected
             except ValueError:
                 try:
-                    player_xys = self.get_player_coords(obs)[0]
-                except IndexError:
-                    player_xys = last_player_xys
-                player_xys = np.reshape(np.asarray([player_xys[0], player_xys[1]], dtype=int), (1, 2))
-                click_player = self.action_processer.process(self.select_army, player_xys)
-                obs_raw = self.env.step(click_player)
-                last_player_xys = player_xys
+                    click_screen = self.action_processer.process(self.move_screen, around_point)
+                    obs_raw = self.env.step(click_screen)
+                except ValueError:
+
+                    try:
+                        player_xys = self.get_player_coords(obs)#[0]
+                    except IndexError:
+                        #If we cannot select the player, this is a bad end
+                        noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
+                        updated_obs_raw = self.env.step(noop)
+                        updated_obs = self.obs_processer.process(obs_raw)
+                        self.episode_counter += 1
+                        bad_end = True
+                        return -1, updated_obs, bad_end
+
+                    player_to_click = np.reshape(np.asarray([player_xys[0], player_xys[1]], dtype=int), (1, 2))
+                    click_player = self.action_processer.process(self.select_army, player_to_click)
+                    obs_raw = self.env.step(click_player)
+                    print('go around - reselect player')
+                    VerrCount += 1
+                    if VerrCount > 3:
+                        #it's not letting me move...
+                        noop = self.action_processer.process(self.noop,
+                                                             np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
+                        updated_obs_raw = self.env.step(noop)
+                        updated_obs = self.obs_processer.process(obs_raw)
+                        self.episode_counter += 1
+                        bad_end = True
+                        return -1, updated_obs, bad_end
+
+
+
 
             except AssertionError:
                 around_point = around2
                 continue
 
             obs = self.obs_processer.process(obs_raw)
+            obs_dict = self.create_obs_dict(obs,target=target_map[target_val])
+            if not obs_dict['blocking']:
+                done = True
+                break
             try:
-                updated_player_xys = self.get_player_coords(obs)[0]
+                player_xys = self.get_player_coords(obs)
             except IndexError:
-                #probably caused by the player getting too close to another object
-                #we'll deal with that by causing it to be caught in a later if, which will nudge the player
-                updated_player_xys = player_xys
-                fixme = True
-            if not fixme:
-                obs_dict = self.create_obs_dict(obs,target=target_map[target_val])
-                if not obs_dict['blocking']:
-                    done = True
-                    break
+                # If we cannot select the player, this is a bad end
+                noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
+                updated_obs_raw = self.env.step(noop)
+                updated_obs = self.obs_processer.process(obs_raw)
+                self.episode_counter += 1
+                bad_end = True
+                return -1, updated_obs, bad_end
 
-            if updated_player_xys == player_xys:
-                #that means we haven't moved.
-                # nd_screen = obs['player_relative_screen']
-                # nd_screen = nd_screen.reshape((32,32))
-                # surrounding = self.neighbors(updated_player_xys[0],updated_player_xys[1],nd_screen)
-                # surrounding = [np.array(x) for x in surrounding]
-                # distance_by_point = {x:np.linalg.norm()}
-                p1, p2 = obstacle_centroid, obstacle_centroid
-                d = 2
-                while p1 in obstacle_coords and p2 in obstacle_coords:
-                    d += 2.75
-                    a1 = player_xys[0]
-                    a2 = player_xys[1]
-                    b1 = obstacle_centroid[0]
-                    b2 = obstacle_centroid[1]
+            if previous_player_xys == player_xys:
+                #That means we haven't moved
+                return self.go_around(obs,target_coords,obstacle_coords,target_val)
 
-                    if b1 - a1 < 0.001:
-                        a1 += 0.001
+            previous_player_xys = player_xys
 
-                    y1 = b2 + (((d ** 2) / (1 + (((b2 - a2) / (b1 - a1)) ** 2))) ** 1 / 2)
-                    y2 = b2 - (((d ** 2) / (1 + (((b2 - a2) / (b1 - a1)) ** 2))) ** 1 / 2)
 
-                    x1 = (((b2 - a2) / (b1 - a1)) * (b2 - y1)) + b1
-                    x2 = (((b2 - a2) / (b1 - a1)) * (b2 - y2)) + b1
 
-                    try:
-
-                        p1 = int(round(x1)), int(round(y1))
-                    except ValueError:
-                        print('troubles...debug here')
-                    try:
-                        p2 = int(round(x2)), int(round(y2))
-                    except ValueError:
-                        print('troubles2 debug ere')
-                current_distance = np.linalg.norm(np.array(player_xys) - np.array(obstacle_centroid))
-                p1_distance = np.linalg.norm(np.array(p1) - np.array(obstacle_centroid))
-                p2_distance = np.linalg.norm(np.array(p2) - np.array(obstacle_centroid))
-                if p1_distance > p2_distance:
-                    around_point = np.reshape(np.asarray([x2, y2], dtype=int), (1, 2))
-                else:
-                    around_point = np.reshape(np.asarray([x1, y1], dtype=int), (1, 2))
-                print('ere')
-                fixme = False
-            player_xys = updated_player_xys
-            # if int(p1[0]) == int(updated_player_xys[0]) and int(p1[1]) == int(player_xys[1]):
-            #     done = True
 
         return self.select_beacon(obs_raw,target_val)
 
@@ -501,6 +532,7 @@ class ActupAgent():
         return neighbors
 
     def select_beacon(self,obs_raw,target_val):
+        print("select beacon target", target_val)
         noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
         obs_raw = self.env.step(noop)
         obs = self.obs_processer.process(obs_raw)
@@ -517,9 +549,14 @@ class ActupAgent():
         #center = np.reshape(np.asarray([center[0], center[1]], dtype=int), (1, 2))
         # point = random.choice(coords)
         # point = np.reshape(np.asarray([point[0], point[1]], dtype=int), (1, 2))
+        reward = 0
         while not done:
-            print(target_val)
-            point = random.choice(coords)
+            coords = target_map[target_val](obs)
+            try:
+                point = random.choice(coords)
+            except IndexError:
+                print("problem - set debug point")
+                return -1, obs, True
             point = np.reshape(np.asarray([point[0], point[1]], dtype=int), (1, 2))
             try:
                 click_screen = self.action_processer.process(self.patrol_screen,point)
@@ -527,27 +564,29 @@ class ActupAgent():
 
             except ValueError:
                 obs = self.obs_processer.process(obs_raw)
-                player_xys = self.get_player_coords(obs)[0]
+                player_xys = self.get_player_coords(obs)#[0]
                 player_xys = np.reshape(np.asarray([player_xys[0], player_xys[1]], dtype=int), (1, 2))
                 click_player = self.action_processer.process(self.select_army, player_xys)
                 obs_raw = self.env.step(click_player)
 
 
-            print(obs_raw[-1].reward,obs_raw[-1].last())
+            # print(obs_raw[-1].reward,obs_raw[-1].last())
             if obs_raw[-1].reward:
                 done = True
                 self.episode_counter += 1
+                reward = obs_raw[-1].reward
 
             if obs_raw[-1].last():
                 done = True
                 self.episode_counter += 1
                 #below might fix the problem where it doesn't reset properly
                 time_done = True
+                reward = -1
 
         noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
         updated_obs_raw = self.env.step(noop)
         updated_obs = self.obs_processer.process(obs_raw)
-        return obs_raw[-1].reward, updated_obs, time_done
+        return reward, updated_obs, time_done
 
 
 
