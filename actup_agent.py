@@ -26,11 +26,15 @@ class ActupAgent():
         self.obs_processer = ObsProcesser()
         self.action_processer = ActionProcesser(dim=flags.FLAGS.resolution)
         self.env = env
+        self.cumulative_score = 0
         self.select_army = np.asarray([7],dtype=int)
         self.patrol_screen = np.asarray([333],dtype=int)
         self.move_screen = np.asarray([331],dtype=int)
         self.noop = np.asarray([0],dtype=int)
         self.episode_counter = 0
+        self.step_caught = 0
+        self.step = 0
+        self.data = {}
         # self.action_map = {-1:self.select_green,0:self.select_orange}
         self.player_selected = False
         #actions
@@ -129,21 +133,31 @@ class ActupAgent():
             obs_dict = {'green':green_beacon, 'orange':orange_beacon, 'blocking':between}
         return obs_dict
 
-    def decision(self, obs):
+    def decision(self, obs_raw):
         '''Given 1 observation, decide on a plan.'''
         #regardless of decision, the first thing is to click on the player
-        self.first_obs = obs
+        print("decision called")
+        err = ''
+        self.decision_obs_raw = obs_raw
         time_done = False
         # time.sleep(0.1)
-        noop = self.action_processer.process(self.noop,np.reshape(np.asarray([0,0],dtype=int),(1,2)))
-        obs_raw = self.env.step(noop)
+        # noop = self.action_processer.process(self.noop,np.reshape(np.asarray([0,0],dtype=int),(1,2)))
+        # obs_raw = self.env.step(noop)
         obs = self.obs_processer.process(obs_raw)
         player_xys = self.get_player_coords(obs)#[0]
-
+        if not player_xys:
+            print('yup. trouble.')
         player_xys = np.reshape(np.asarray([player_xys[0],player_xys[1]],dtype=int),(1,2))
 
         click_player = self.action_processer.process(self.select_army,player_xys)
         obs_raw = self.env.step(click_player)
+        if obs_raw[0].last():
+            print('last caught decision')
+            self.episode_counter += 1
+            self.cumulative_score = 0
+            obs = self.obs_processer.process(obs_raw)
+            obs_dict = self.create_obs_dict(obs)
+            return {**obs_dict, 'value':-1},obs_raw, True, 'time done in decision'
 
         obs = self.obs_processer.process(obs_raw)
 
@@ -191,14 +205,14 @@ class ActupAgent():
         action = round(action)
         print(obs_dict)
         if action: #i.e. go around
-            reward,obs,time_done = self.go_around(obs, target_coords=coords,obstacle_coords=obstacle_coords,target_val=obs_dict['target'])
-        if action == 0 and obs_dict['target'] == 1:
-            reward,obs,time_done = self.select_beacon(obs_raw,obs_dict['target'])
-        if action == 0 and obs_dict['target'] == 0:
-            reward,obs,time_done = self.select_beacon(obs_raw,obs_dict['target'])
+            reward,obs,time_done,err = self.go_around(obs_raw, target_coords=coords,obstacle_coords=obstacle_coords,target_val=obs_dict['target'])
+        elif action == 0 and obs_dict['target'] == 1:
+            reward,obs,time_done,err = self.select_beacon(obs_raw,obs_dict['target'],chunk=obs_dict)
+        elif action == 0 and obs_dict['target'] == 0:
+            reward,obs,time_done,err = self.select_beacon(obs_raw,obs_dict['target'],chunk=obs_dict)
 
 
-        return {**obs_dict, 'value':reward},obs,time_done
+        return {**obs_dict, 'value':reward},obs_raw,time_done,err
 
 
     def get_around_coords(self,obs,target_coords,obstacle_coords):
@@ -207,9 +221,9 @@ class ActupAgent():
 
 
     def get_green_beacon_coords(self,obs):
-        noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
-        obs_raw = self.env.step(noop)
-        obs = self.obs_processer.process(obs_raw)
+        # noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
+        # obs_raw = self.env.step(noop)
+        # obs = self.obs_processer.process(obs_raw)
         player_relative = obs["player_relative_screen"]
         # neutral is green beacon in this mission
         neutral_x, neutral_y = (player_relative == _PLAYER_NEUTRAL).nonzero()[1:3]
@@ -221,9 +235,9 @@ class ActupAgent():
         return green_points
 
     def get_orange_beacon_coords(self,obs):
-        noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
-        obs_raw = self.env.step(noop)
-        obs = self.obs_processer.process(obs_raw)
+        # noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
+        # obs_raw = self.env.step(noop)
+        # obs = self.obs_processer.process(obs_raw)
         player_relative = obs["player_relative_screen"]
         #enemey is orange beacon in this mission
         enemy_x, enemy_y = (player_relative == _PLAYER_HOSTILE).nonzero()[1:3]
@@ -235,9 +249,9 @@ class ActupAgent():
         return orange_points
 
     def get_player_coords(self,obs):
-        noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
-        obs_raw = self.env.step(noop)
-        obs = self.obs_processer.process(obs_raw)
+        # noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
+        # obs_raw = self.env.step(noop)
+        # obs = self.obs_processer.process(obs_raw)
         player_relative = obs["player_relative_screen"]
         player_x, player_y = (player_relative == _PLAYER_FRIENDLY).nonzero()[1:3]
         if player_y.any():
@@ -249,12 +263,19 @@ class ActupAgent():
             return random.choice(player_points)
         return player_points[0]
 
-    def go_around(self,obs,target_coords=[],obstacle_coords=[],target_val=0):
-        noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
-        obs_raw = self.env.step(noop)
+    def go_around(self,obs_raw,target_coords=[],obstacle_coords=[],target_val=0):
+        print("go around called")
+        err = ''
+        target_rewards = {0:50, 1:1}
+        # noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
+        # obs_raw = self.env.step(noop)
         obs = self.obs_processer.process(obs_raw)
         target_map = {1:'green', 0:'orange'}
         player_xys = self.get_player_coords(obs)#[0]
+
+        if self.cumulative_score > obs_raw[0].observation['score_cumulative'][0] and obs_raw[0].observation['score_cumulative'][0] == 0:
+            #retting the score probably didn't go right
+            self.cumulative_score = 0
 
         print("go around target", target_val)
         # alt_player = np.where(obs['player_relative_screen'] == 1)
@@ -321,6 +342,8 @@ class ActupAgent():
             around2 = np.reshape(np.asarray(p1, dtype=int), (1, 2))
 
         around_point = around1
+        if around_point[0][0] >= flags.FLAGS.resolution or around_point[0][0] <= 0 or around_point[0][1] >= flags.FLAGS.resolution or around_point[0][1] <= 0:
+            around_point = around2
 
 
         # around1 = np.reshape(np.asarray([p_], dtype=int), (1, 2))
@@ -409,70 +432,151 @@ class ActupAgent():
         while not done:
             #first check that we didn't hit a beacon or time has ended
             if obs_raw[-1].reward:
-                noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
-                updated_obs_raw = self.env.step(noop)
-                updated_obs = self.obs_processer.process(obs_raw)
+                self.cumulative_score += obs_raw[0].reward
+                reward = obs_raw[0].reward
+                while not obs_raw[0].observation['score_cumulative'][0] == self.cumulative_score:
+                    noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
+                    obs_raw = self.env.step(noop).copy()
+                    if obs_raw[0].last():
+                        print('damn...')
+
                 self.episode_counter += 1
-                if obs_raw[-1].reward == 1:
+                if not obs_raw[-1].reward == target_rewards[target_val]:
                     reward = -1
+                    err = 'hit beacon by accident (go around)'
                     bad_end = True
                 else:
+                    err = 'reward - go around'
                     reward = obs_raw[-1].reward
-                return -1,updated_obs,bad_end
+                return reward,obs_raw,bad_end,err
+
 
 
             if obs_raw[-1].last():
+                self.cumulative_score = 0
                 noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
                 updated_obs_raw = self.env.step(noop)
                 updated_obs = self.obs_processer.process(obs_raw)
+                if updated_obs_raw[0].last():
+                    print('damn...')
                 self.episode_counter += 1
                 bad_end = True
-                return -1, updated_obs, bad_end
-            #try clicking to the around point
-            try:
+                err = 'last - time'
+                return -1, updated_obs_raw, bad_end, err
 
-                click_screen = self.action_processer.process(self.patrol_screen, around_point)
-                obs_raw = self.env.step(click_screen)
+            if not obs_raw[0].observation['score_cumulative'][0] == self.cumulative_score:
+                reward = obs_raw[0].observation['score_cumulative'][0] - self.cumulative_score
+                loops = 0
+                while not obs_raw[0].reward == reward:
+                    noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
+                    obs_raw = self.env.step(noop).copy()
+                    if obs_raw[0].last():
+                        print('damn...')
+                    loops += 1
+                    if loops > 10:
+                        break
+                self.episode_counter += 1
 
-            #If there's a valueError - it's probably because the agent isn't selected
-            except ValueError:
+                err = 'reward'
+                self.cumulative_score += reward
+                if not reward == target_rewards[target_val]:
+                    reward = -1
+                    bad_end = True
+                    err = 'hit wrong beacon by accident (go_around 2)'
+                return reward,obs_raw,bad_end,err
+
+
+
+
+            if 333 in obs_raw[0].observation['available_actions']:
                 try:
-                    click_screen = self.action_processer.process(self.move_screen, around_point)
+                    click_screen = self.action_processer.process(self.patrol_screen, around_point)
                     obs_raw = self.env.step(click_screen)
-                except ValueError:
-
-                    try:
-                        player_xys = self.get_player_coords(obs)#[0]
-                    except IndexError:
-                        #If we cannot select the player, this is a bad end
-                        noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
-                        updated_obs_raw = self.env.step(noop)
-                        updated_obs = self.obs_processer.process(obs_raw)
+                    if obs_raw[0].last():
+                        self.cumulative_score = 0
                         self.episode_counter += 1
-                        bad_end = True
-                        return -1, updated_obs, bad_end
-
-                    player_to_click = np.reshape(np.asarray([player_xys[0], player_xys[1]], dtype=int), (1, 2))
-                    click_player = self.action_processer.process(self.select_army, player_to_click)
-                    obs_raw = self.env.step(click_player)
-                    print('go around - reselect player')
-                    VerrCount += 1
-                    if VerrCount > 3:
-                        #it's not letting me move...
+                        err = 'time - around 2'
                         noop = self.action_processer.process(self.noop,
                                                              np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
                         updated_obs_raw = self.env.step(noop)
                         updated_obs = self.obs_processer.process(obs_raw)
-                        self.episode_counter += 1
-                        bad_end = True
-                        return -1, updated_obs, bad_end
+                        if updated_obs_raw[0].last():
+                            print('damn...')
+                        return -1,obs_raw,True,err
 
-
-
-
-            except AssertionError:
-                around_point = around2
+                except ValueError as err:
+                    print(err)
+                    print("should not get here with new if statements...")
+                except AssertionError as err:
+                    print('err', around_point)
+            else:
+                try:
+                    player_to_click = np.reshape(np.asarray([player_xys[0], player_xys[1]], dtype=int), (1, 2))
+                    click_player = self.action_processer.process(self.select_army, player_to_click)
+                    obs_raw = self.env.step(click_player)
+                    if obs_raw[0].last():
+                        print('damn...')
+                except ValueError as err2:
+                    print(err2)
+                    print("should not get ere either, with new if statements")
                 continue
+
+
+
+
+
+
+            #try clicking to the around point
+            # try:
+            #
+            #     click_screen = self.action_processer.process(self.patrol_screen, around_point)
+            #     obs_raw = self.env.step(click_screen)
+            #
+            # #If there's a valueError - it's probably because the agent isn't selected
+            # except ValueError as err:
+            #     print(err)
+            #     if 333 in obs_raw[0].observation['available_actions']:
+            #         #that means the problem is an INDEX error (clicking off screen)
+            #         around_point = around2
+            #         continue
+            #     try:
+            #         click_screen = self.action_processer.process(self.move_screen, around_point)
+            #         obs_raw = self.env.step(click_screen)
+            #     except ValueError as err2:
+            #         print(err2)
+            #         try:
+            #             player_xys = self.get_player_coords(obs)#[0]
+            #         except IndexError as err3:
+            #             #If we cannot select the player, this is a bad end
+            #             print(err3)
+            #             noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
+            #             updated_obs_raw = self.env.step(noop)
+            #             updated_obs = self.obs_processer.process(obs_raw)
+            #             self.episode_counter += 1
+            #             bad_end = True
+            #             return -1, updated_obs_raw, bad_end
+            #
+            #         player_to_click = np.reshape(np.asarray([player_xys[0], player_xys[1]], dtype=int), (1, 2))
+            #         click_player = self.action_processer.process(self.select_army, player_to_click)
+            #         obs_raw = self.env.step(click_player)
+            #         print('go around - reselect player')
+            #         VerrCount += 1
+            #         if VerrCount > 3:
+            #             #it's not letting me move...
+            #             noop = self.action_processer.process(self.noop,
+            #                                                  np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
+            #             updated_obs_raw = self.env.step(noop)
+            #             updated_obs = self.obs_processer.process(obs_raw)
+            #             self.episode_counter += 1
+            #             bad_end = True
+            #             return -1, updated_obs_raw, bad_end
+
+
+
+
+            # except AssertionError:
+            #     around_point = around2
+            #     continue
 
             obs = self.obs_processer.process(obs_raw)
             obs_dict = self.create_obs_dict(obs,target=target_map[target_val])
@@ -485,14 +589,17 @@ class ActupAgent():
                 # If we cannot select the player, this is a bad end
                 noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
                 updated_obs_raw = self.env.step(noop)
+                if updated_obs_raw[0].last():
+                    print('damn...')
                 updated_obs = self.obs_processer.process(obs_raw)
                 self.episode_counter += 1
                 bad_end = True
-                return -1, updated_obs, bad_end
+                err = 'cannot click player'
+                return -1, updated_obs_raw, bad_end, err
 
             if previous_player_xys == player_xys:
                 #That means we haven't moved
-                return self.go_around(obs,target_coords,obstacle_coords,target_val)
+                return self.go_around(obs_raw,target_coords,obstacle_coords,target_val)
 
             previous_player_xys = player_xys
 
@@ -531,17 +638,31 @@ class ActupAgent():
                          (0 <= y2 <= Y))]
         return neighbors
 
-    def select_beacon(self,obs_raw,target_val):
+    def select_beacon(self,obs_raw,target_val,chunk=None):
+        print("select beacon called")
+        if obs_raw[0].last():
+            err = 'last'
+            print("last caught select beacon 1")
+            return -1, obs_raw, True, err
+        # previous_obs = []
+        # previous_obs.append(obs_raw.copy())
         print("select beacon target", target_val)
-        noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
-        obs_raw = self.env.step(noop)
+        err = ''
+        target_rewards = {0:50, 1:1}
+        # noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
+        # obs_raw = self.env.step(noop).copy()
         obs = self.obs_processer.process(obs_raw)
+        # previous_obs.append(obs_raw.copy())
         target_map = {1: self.get_green_beacon_coords, 0: self.get_orange_beacon_coords}
         coords = target_map[target_val](obs)
         done = False
         time_done = False
         xs = [p[0] for p in coords]
         ys = [p[1] for p in coords]
+
+        if self.cumulative_score > obs_raw[0].observation['score_cumulative'][0] and obs_raw[0].observation['score_cumulative'][0] == 0:
+            #retting the score probably didn't go right
+            self.cumulative_score = 0
         #centroid = (sum(xs) / len(coords), sum(ys) / len(coords))
         #centroid = np.reshape(np.asarray([centroid[0],centroid[1]],dtype=int),(1,2))
         #the centroid is not always sufficient, it seems.
@@ -550,43 +671,117 @@ class ActupAgent():
         # point = random.choice(coords)
         # point = np.reshape(np.asarray([point[0], point[1]], dtype=int), (1, 2))
         reward = 0
+        print("select beacon while loop about to start")
         while not done:
             coords = target_map[target_val](obs)
             try:
                 point = random.choice(coords)
-            except IndexError:
-                print("problem - set debug point")
-                return -1, obs, True
-            point = np.reshape(np.asarray([point[0], point[1]], dtype=int), (1, 2))
-            try:
-                click_screen = self.action_processer.process(self.patrol_screen,point)
-                obs_raw = self.env.step(click_screen)
+            except IndexError as err:
+                #if there are no points, then it's switched maps BEFORE getting the reward - we need to keep doing noop
+                #until the reward comes through
+                noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
+                obs_raw = self.env.step(noop).copy()
+                # if obs_raw[0].last():
+                #     print('damn...')
+                # print('debug')
 
-            except ValueError:
-                obs = self.obs_processer.process(obs_raw)
-                player_xys = self.get_player_coords(obs)#[0]
-                player_xys = np.reshape(np.asarray([player_xys[0], player_xys[1]], dtype=int), (1, 2))
-                click_player = self.action_processer.process(self.select_army, player_xys)
-                obs_raw = self.env.step(click_player)
+                # print("problem - set debug point")
+                # err = err.__str__() + ' - due to wrong obs'
+                # return -1, obs_raw, True, err
+            else:
+                point = np.reshape(np.asarray([point[0], point[1]], dtype=int), (1, 2))
+                try:
+                    # previous_obs.append(obs_raw.copy())
+                    click_screen = self.action_processer.process(self.patrol_screen,point)
+                    obs_raw = self.env.step(click_screen).copy()
+                    # if obs_raw[0].last():
+                    #     self.cumulative_score = 0
+                    #     self.episode_counter += 1
+                    #     noop = self.action_processer.process(self.noop,
+                    #                                          np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
+                    #     updated_obs_raw = self.env.step(noop)
+                    #     updated_obs = self.obs_processer.process(obs_raw)
+                    #     return -1,updated_obs_raw,True,'time up - select beacon 2'
 
+                except ValueError:
+                    noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
+                    obs_raw = self.env.step(noop).copy()
+                    # if obs_raw[0].last():
+                    #     print('damn...')
+                    # print('debug')
+                # previous_obs = obs_raw.copy()
+                # obs = self.obs_processer.process(obs_raw)
+                # player_xys = self.get_player_coords(obs)#[0]
+                # player_xys = np.reshape(np.asarray([player_xys[0], player_xys[1]], dtype=int), (1, 2))
+                # click_player = self.action_processer.process(self.select_army, player_xys)
+                # obs_raw = self.env.step(click_player).copy()
+
+            # print(obs_raw[0].last(), obs_raw[0].reward, obs_raw[0].observation['score_cumulative'][0])
 
             # print(obs_raw[-1].reward,obs_raw[-1].last())
+            if self.cumulative_score > obs_raw[0].observation['score_cumulative'][0] and \
+                    obs_raw[0].observation['score_cumulative'][0] == 0:
+                # retting the score probably didn't go right
+                self.cumulative_score = 0
+
             if obs_raw[-1].reward:
+                self.cumulative_score += int(obs_raw[-1].reward)
+                reward = obs_raw[-1].reward
+                while not obs_raw[0].observation['score_cumulative'][0] == self.cumulative_score:
+                    noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
+                    obs_raw = self.env.step(noop).copy()
+                    if obs_raw[0].last():
+                        print('damn... select beacon 2')
+
                 done = True
                 self.episode_counter += 1
-                reward = obs_raw[-1].reward
+                err = 'reward'
+                if not reward == target_rewards[target_val]:
+                    reward = -1
+                    err = 'hit wrong beacon by accident (select_beacon)'
+                break
+
+
 
             if obs_raw[-1].last():
                 done = True
+                self.cumulative_score = 0
                 self.episode_counter += 1
                 #below might fix the problem where it doesn't reset properly
                 time_done = True
                 reward = -1
+                err = 'last'
+                print('last caught select beacon 2')
+                break
+
+            if not int(obs_raw[0].observation['score_cumulative'][0]) == int(self.cumulative_score):
+                reward = int(obs_raw[0].observation['score_cumulative'][0] - self.cumulative_score)
+                loops = 0
+                while not int(obs_raw[0].reward) == int(reward):
+                    noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
+                    obs_raw = self.env.step(noop).copy()
+                    if obs_raw[0].last():
+                        print('damn...')
+                    loops += 1
+                    if loops > 10:
+                        break
+                    # reward = obs_raw[0].observation['score_cumulative'][0] - self.cumulative_score
+
+                self.episode_counter += 1
+                done = True
+
+                err = 'reward'
+                self.cumulative_score += reward
+                if not int(reward) == int(target_rewards[target_val]):
+                    reward = -1
+                    err = 'hit wrong beacon by accident (select_becon 2)'
+                break
 
         noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
         updated_obs_raw = self.env.step(noop)
         updated_obs = self.obs_processer.process(obs_raw)
-        return reward, updated_obs, time_done
+        print('select beacon done')
+        return reward, obs_raw, time_done, err
 
 
 
@@ -595,8 +790,9 @@ class ActupAgent():
 
     def reset(self):
         obs = self.env.reset()
-        self.latest_obs = self.obs_processer.process(obs)
-        return self.latest_obs
+        # self.latest_obs = self.obs_processer.process(obs)
+        #return self.latest_obs
+        return obs
 
 
 

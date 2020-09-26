@@ -11,6 +11,7 @@ from actorcritic.agent import ActorCriticAgent, ACMode
 from actorcritic.runner import Runner, PPORunParams
 from common.multienv import SubprocVecEnv, make_sc2env, SingleEnv
 from actup_agent import ActupAgent
+import numpy as np
 
 import time
 
@@ -19,8 +20,8 @@ import pickle
 #import threading
 
 FLAGS = flags.FLAGS
-flags.DEFINE_bool("visualize", True, "Whether to render with pygame.")
-flags.DEFINE_integer("resolution", 32, "Resolution for screen and minimap feature layers.")
+flags.DEFINE_bool("visualize", False, "Whether to render with pygame.")
+flags.DEFINE_integer("resolution", 64, "Resolution for screen and minimap feature layers.")
 flags.DEFINE_integer("step_mul", 8, "Game steps per agent step.")
 flags.DEFINE_integer("n_envs", 1, "Number of environments to run in parallel")
 flags.DEFINE_integer("episodes", 100, "Number of complete episodes")
@@ -72,21 +73,46 @@ def main():
     #Create the environment and the agent
     env = SingleEnv(make_sc2env(**env_args))
     actupAgent = ActupAgent(env)
-    reset_obs = actupAgent.reset()
+    obs_raw = actupAgent.reset()
     bad_end = False
-
+    data = {'obs_raw':[],'chunk':[],'bad_end':[],'err':[]}
     while actupAgent.episode_counter <= (FLAGS.episodes - 1):
-        time.sleep(0.001)
-        chunk, reset_obs, bad_end = actupAgent.decision(reset_obs)
+        err = ''
+        if obs_raw[0].last():
+            actupAgent.cumulative_score = 0
+            noop = actupAgent.action_processer.process(actupAgent.noop,
+                                                 np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
+            obs_raw = env.step(noop)
+            print('shiit')
+        time.sleep(0.01)
+        data['obs_raw'].append(obs_raw)
+        chunk, obs_raw, bad_end, err = actupAgent.decision(obs_raw)
+        data['chunk'].append(chunk)
+        data['bad_end'].append(bad_end)
+        data['err'].append(err)
         if bad_end:
-            reset_obs = actupAgent.reset()
-            print('bad end')
-        if not bad_end:
-            print("success")
-            actupAgent.memory.learn(**chunk)
+            actupAgent.episode_counter -= 1
         else:
-            print('ended wrong')
-            bad_end = False
+            actupAgent.memory.learn(**chunk)
+        # if bad_end:
+        #     bad_end = False
+        #     data['obs_raw'].append(obs_raw)
+        #     chunk, obs_raw, bad_end, err = actupAgent.decision(obs_raw)
+        #     data['chunk'].append(chunk)
+        #     data['bad_end'].append(bad_end)
+        #     data['err'].append(err)
+        #     if bad_end:
+        #         actupAgent.episode_counter -= 1
+        #         obs_raw = actupAgent.reset()
+        #         print('bad end')
+        # if not bad_end:
+        #     print("success")
+        #     actupAgent.memory.learn(**chunk)
+        # else:
+        #     print('ended wrong')
+        #     bad_end = False
+
+    pickle.dump(data, open('data_test.pkl','wb'))
 
 if __name__ == "__main__":
     main()
