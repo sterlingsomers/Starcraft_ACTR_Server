@@ -915,6 +915,7 @@ class ActupAgent():
                 # if not int(reward) == int(target_rewards[target_val]):
                 #     reward = -1
                 #     err = 'hit wrong beacon by accident (select_becon 2)'
+
                 break
 
         noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
