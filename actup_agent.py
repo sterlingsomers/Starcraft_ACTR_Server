@@ -5,6 +5,7 @@ from absl import flags
 import numpy as np
 import random
 import pyactup
+import math
 import time
 
 
@@ -21,8 +22,10 @@ _SELECT_ALL = [0]
 
 class ActupAgent():
 
-    def __init__(self,env,noise=0.0,decay=0.5,temperature=1.0,threshold=-100.0,mismatch=1.75,optimized_learning=False):
-        self.memory = pyactup.Memory(noise,decay,temperature,threshold,mismatch)
+    def __init__(self,env,noise=0.0,decay=0.0,temperature=1.0,threshold=-100.0,mismatch=1,optimized_learning=False):
+        self.memory = pyactup.Memory(noise=noise,decay=decay,temperature=temperature,threshold=threshold,mismatch=mismatch,optimized_learning=optimized_learning)#noise,decay,temperature,threshold,mismatch)
+        self.mismatch = mismatch
+        self.temperature = temperature
         self.obs_processer = ObsProcesser()
         self.action_processer = ActionProcesser(dim=flags.FLAGS.resolution)
         self.env = env
@@ -42,12 +45,23 @@ class ActupAgent():
         #0  orange
         # self.memory.learn(green=1,orange=1,action=-1,value=1000)
         # self.memory.learn(green=1,orange=1,action=0,value=1000)
-        self.memory.learn(green=0,orange=1,target=0,value=100)
-        self.memory.learn(green=1,orange=0,target=1,value=100)
-        self.memory.learn(green=1,orange=1,target=1,blocking=1,action=1)
-        self.memory.learn(green=1,orange=1,target=1,blocking=0,action=0)
-        self.memory.learn(green=1,orange=1,target=0,blocking=0,action=0)
-        self.memory.learn(green=1,orange=1,target=0,blocking=1,action=1)
+        self.memory.learn(green=1,orange=1,target=0,value=5)
+        self.memory.learn(green=1,orange=1,target=1,value=5)
+        self.memory.learn(orange=1, green=1, target=1, blocking=0, action=0)
+        self.memory.learn(orange=1, green=1, target=1, blocking=1, action=1)
+        self.memory.learn(orange=1, green=1, target=0, blocking=0, action=0)
+        self.memory.learn(orange=1, green=1, target=0, blocking=1, action=1)
+
+        # self.memory.learn(green=1,orange=1,target=1,blocking=1,action=1)
+        # self.memory.learn(green=1,orange=1,target=1,blocking=0,action=0)
+        # self.memory.learn(green=1,orange=1,target=0,blocking=0,action=0)
+        # self.memory.learn(green=1,orange=1,target=0,blocking=1,action=1)
+        # self.memory.learn(green=1,orange=0,target=1,blocking=0,action=0)
+        # self.memory.learn(green=0,orange=1,target=0,blocking=0,action=0)
+
+        pyactup.set_similarity_function(self.custom_similarity,*['green','orange','target','blocking'])
+
+
 
 
 
@@ -133,10 +147,114 @@ class ActupAgent():
             obs_dict = {'green':green_beacon, 'orange':orange_beacon, 'blocking':between}
         return obs_dict
 
+    def compute_S(self,probe, feature_list, history, Vk, MP, t):
+        chunk_names = []
+
+        PjxdSims = {}
+        PI = math.pi
+        for feature in feature_list:
+            Fk = probe[feature]
+            for chunk in history:
+                #I added this check to see if there is a retrieval probabily
+                #If not, the chunk should not be included - it wasn't retrieved
+                if not 'retrieval_probability' in chunk.keys():
+                    continue
+                dSim = None
+                vjk = None
+                for attribute in chunk['attributes']:
+                    if attribute[0] == feature:
+                        vjk = attribute[1]
+                        break
+
+                if Fk == vjk:
+                    dSim = 0.0
+                else:
+                    if 'rads' in feature:
+                        a_result = np.argmin(((2 * PI) - abs(vjk-Fk), abs(vjk-Fk)))
+                        if not a_result:
+                            dSim = (vjk - Fk) / abs(Fk - vjk)
+                        else:
+                            dSim = (Fk - vjk) / abs(Fk - vjk)
+                    else:
+                        dSim = (vjk - Fk) / abs(Fk - vjk)
+
+                # if Fk == vjk:
+                #     dSim = 0
+                # else:
+                #     dSim = -1 * ((Fk-vjk) / math.sqrt((Fk - vjk)**2))
+
+                Pj = chunk['retrieval_probability']
+                if not feature in PjxdSims:
+                    PjxdSims[feature] = []
+                PjxdSims[feature].append(Pj * dSim)
+                pass
+
+        # vio is the value of the output slot
+        fullsum = {}
+        result = {}  # dictionary to track feature
+        Fk = None
+        for feature in feature_list:
+            Fk = probe[feature]
+            if not feature in fullsum:
+                fullsum[feature] = []
+            inner_quantity = None
+            Pi = None
+            vio = None
+            dSim = None
+            vik = None
+            for chunk in history:
+                if not 'retrieval_probability' in chunk.keys():
+                    continue
+                Pi = chunk['retrieval_probability']
+                for attribute in chunk['attributes']:
+                    if attribute[0] == Vk:
+                        vio = attribute[1]
+
+                for attribute in chunk['attributes']:
+                    if attribute[0] == feature:
+                        vik = attribute[1]
+                # if Fk > vik:
+                #     dSim = -1
+                # elif Fk == vik:
+                #     dSim = 0
+                # else:
+                #     dSim = 1
+                # dSim = (Fk - vjk) / sqrt(((Fk - vjk) ** 2) + 10 ** -10)
+                if Fk == vik:
+                    dSim = 0.0
+                else:
+                    #dSim = (vik - Fk) / abs(Fk - vik)
+                    if 'rads' in feature:
+                        a_result = np.argmin(((2 * PI) - abs(vjk-Fk), abs(vjk-Fk)))
+                        if not a_result:
+                            dSim = (vik - Fk) / abs(Fk - vik)
+                        else:
+                            dSim = (Fk - vjk) / abs(Fk - vik)
+                    else:
+                        dSim = (vik - Fk) / abs(Fk - vik)
+                #
+                # if Fk == vik:
+                #     dSim = 0
+                # else:
+                #     dSim = -1 * ((Fk-vik) / math.sqrt((Fk - vik)**2))
+
+                inner_quantity = dSim - sum(PjxdSims[feature])
+                fullsum[feature].append(Pi * inner_quantity * vio)
+
+            result[feature] = sum(fullsum[feature])
+
+        # sorted_results = sorted(result.items(), key=lambda kv: kv[1])
+        return result
+
+    def custom_similarity(self,x,y):
+        result = 1 - abs(x-y)
+        return result
+
     def decision(self, obs_raw):
         '''Given 1 observation, decide on a plan.'''
         #regardless of decision, the first thing is to click on the player
         print("decision called")
+        self.memory.advance()
         err = ''
         self.decision_obs_raw = obs_raw
         time_done = False
@@ -172,6 +290,17 @@ class ActupAgent():
 
         if green_beacon_xys and orange_beacon_xys:
             #Only do the blend if there's an option. Otherwise just click on what's available"
+            targets = [0, 1]
+
+            for target in targets:
+
+                self.memory.activation_history = []
+                value_blend = self.memory.blend('value',green=1,orange=1,target=target)
+                salience = self.compute_S({'green':1, 'orange':1,'target':target},['green','orange','target'],
+                                          self.memory.activation_history,'target',self.mismatch,self.temperature)
+                print('here')
+
+
             best_target = self.memory.best_blend('value',(1,0),'target')
             self.best_target = best_target
 
@@ -199,16 +328,20 @@ class ActupAgent():
         #At this point we've picked a target.
         #and have a new blend to determine if the target is blocked
         #Now let's determine action: go-to-target or go-around-obstacle
+        self.memory.activation_history = []
         action = self.memory.blend('action', **obs_dict)
+        salience = self.compute_S(obs_dict, ['green', 'orange', 'target', 'blocking'],
+                                  self.memory.activation_history, 'action', self.mismatch, self.temperature)
+        print('here')
         #action = self.memory.retrieve(partial=True,**obs_dict)['action']
 
         action = round(action)
         print(obs_dict)
         if action: #i.e. go around
             reward,obs,time_done,err = self.go_around(obs_raw, target_coords=coords,obstacle_coords=obstacle_coords,target_val=obs_dict['target'])
-        elif action == 0 and obs_dict['target'] == 1:
+        elif action == 0 and obs_dict['target'] == 1: #go directly to green
             reward,obs,time_done,err = self.select_beacon(obs_raw,obs_dict['target'],chunk=obs_dict)
-        elif action == 0 and obs_dict['target'] == 0:
+        elif action == 0 and obs_dict['target'] == 0: #go directly to orange
             reward,obs,time_done,err = self.select_beacon(obs_raw,obs_dict['target'],chunk=obs_dict)
 
 
@@ -681,6 +814,7 @@ class ActupAgent():
                 #until the reward comes through
                 noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
                 obs_raw = self.env.step(noop).copy()
+                print('debug...')
                 # if obs_raw[0].last():
                 #     print('damn...')
                 # print('debug')
@@ -694,6 +828,7 @@ class ActupAgent():
                     # previous_obs.append(obs_raw.copy())
                     click_screen = self.action_processer.process(self.patrol_screen,point)
                     obs_raw = self.env.step(click_screen).copy()
+                    print('debug...')
                     # if obs_raw[0].last():
                     #     self.cumulative_score = 0
                     #     self.episode_counter += 1
@@ -706,6 +841,7 @@ class ActupAgent():
                 except ValueError:
                     noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
                     obs_raw = self.env.step(noop).copy()
+                    print('debug...')
                     # if obs_raw[0].last():
                     #     print('damn...')
                     # print('debug')
@@ -730,15 +866,17 @@ class ActupAgent():
                 while not obs_raw[0].observation['score_cumulative'][0] == self.cumulative_score:
                     noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
                     obs_raw = self.env.step(noop).copy()
+                    print('debug...')
                     if obs_raw[0].last():
                         print('damn... select beacon 2')
 
                 done = True
                 self.episode_counter += 1
                 err = 'reward'
-                if not reward == target_rewards[target_val]:
-                    reward = -1
-                    err = 'hit wrong beacon by accident (select_beacon)'
+                #cannot do following test with stochastic reward
+                # if not reward == target_rewards[target_val]:
+                #     reward = -1
+                #     err = 'hit wrong beacon by accident (select_beacon)'
                 break
 
 
@@ -760,6 +898,7 @@ class ActupAgent():
                 while not int(obs_raw[0].reward) == int(reward):
                     noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
                     obs_raw = self.env.step(noop).copy()
+                    print('debug...')
                     if obs_raw[0].last():
                         print('damn...')
                     loops += 1
@@ -772,14 +911,16 @@ class ActupAgent():
 
                 err = 'reward'
                 self.cumulative_score += reward
-                if not int(reward) == int(target_rewards[target_val]):
-                    reward = -1
-                    err = 'hit wrong beacon by accident (select_becon 2)'
+                #I cannot do the following test with stochastic reward.
+                # if not int(reward) == int(target_rewards[target_val]):
+                #     reward = -1
+                #     err = 'hit wrong beacon by accident (select_becon 2)'
                 break
 
         noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
         updated_obs_raw = self.env.step(noop)
         updated_obs = self.obs_processer.process(obs_raw)
+        print('debug...')
         print('select beacon done')
         return reward, obs_raw, time_done, err
 
