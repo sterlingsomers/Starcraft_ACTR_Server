@@ -275,7 +275,7 @@ class ActupAgent():
             self.cumulative_score = 0
             obs = self.obs_processer.process(obs_raw)
             obs_dict = self.create_obs_dict(obs)
-            return {**obs_dict, 'value':-1},obs_raw, True, 'time done in decision'
+            return {**obs_dict, 'blocking':-1,'target':-1,'value':-1},obs_raw, True, 'time done in decision', {}, {}
 
         obs = self.obs_processer.process(obs_raw)
 
@@ -287,10 +287,11 @@ class ActupAgent():
         self.first_obs_dict = obs_dict.copy()
         print('obs dict', obs_dict)
 
-
+        value_saliences = []
         if green_beacon_xys and orange_beacon_xys:
             #Only do the blend if there's an option. Otherwise just click on what's available"
             targets = [0, 1]
+            target_values = {0:0, 1:0}
 
             for target in targets:
 
@@ -298,20 +299,26 @@ class ActupAgent():
                 value_blend = self.memory.blend('value',green=1,orange=1,target=target)
                 salience = self.compute_S({'green':1, 'orange':1,'target':target},['green','orange','target'],
                                           self.memory.activation_history,'target',self.mismatch,self.temperature)
-                print('here')
+                salience['value_estimate'] = value_blend
+                salience['imagined_target'] = target
+                value_saliences.append(salience.copy())
+                target_values[target] = value_blend
+                #print('here')
 
-
-            best_target = self.memory.best_blend('value',(1,0),'target')
+            #m_best = self.memory.best_blend('value',(1,0),'target')
+            best_target_value = max(target_values.values())#self.memory.best_blend('value',(1,0),'target')
+            best_targets = [x for x in target_values if target_values[x] == best_target_value]
+            best_target = random.choice(best_targets)
             self.best_target = best_target
 
             #if best_target[0]['action'] == -1:
-            if best_target[0] == 1:
+            if best_target == 1:
                 obs_dict = self.create_obs_dict(obs,target='green')
                 obs_dict['target'] = 1
                 coords = green_beacon_xys
                 obstacle_coords = orange_beacon_xys
             #elif best_target[0]['action'] == 0:
-            elif best_target[0] == 0:
+            elif best_target == 0:
                 obs_dict = self.create_obs_dict(obs,target='orange')
                 obs_dict['target'] = 0
                 coords = orange_beacon_xys
@@ -328,14 +335,19 @@ class ActupAgent():
         #At this point we've picked a target.
         #and have a new blend to determine if the target is blocked
         #Now let's determine action: go-to-target or go-around-obstacle
-        self.memory.activation_history = []
-        action = self.memory.blend('action', **obs_dict)
-        salience = self.compute_S(obs_dict, ['green', 'orange', 'target', 'blocking'],
-                                  self.memory.activation_history, 'action', self.mismatch, self.temperature)
-        print('here')
+        action = 0 #go direct is default until you make a choice
+        action_salience = {'green':np.NaN,'orange':np.NaN,'target':np.NaN,'blocking':np.NaN}
+        if green_beacon_xys and orange_beacon_xys:
+            self.memory.activation_history = []
+            action = self.memory.blend('action', **obs_dict)
+            salience = self.compute_S(obs_dict, ['green', 'orange', 'target', 'blocking'],
+                                      self.memory.activation_history, 'action', self.mismatch, self.temperature)
+            action_salience = dict(**salience)
+        #print('here')
         #action = self.memory.retrieve(partial=True,**obs_dict)['action']
-
+        action_salience['action'] = action
         action = round(action)
+
         print(obs_dict)
         if action: #i.e. go around
             reward,obs,time_done,err = self.go_around(obs_raw, target_coords=coords,obstacle_coords=obstacle_coords,target_val=obs_dict['target'])
@@ -345,7 +357,7 @@ class ActupAgent():
             reward,obs,time_done,err = self.select_beacon(obs_raw,obs_dict['target'],chunk=obs_dict)
 
 
-        return {**obs_dict, 'value':reward},obs_raw,time_done,err
+        return {**obs_dict, 'value':reward},obs_raw,time_done,err,value_saliences,action_salience
 
 
     def get_around_coords(self,obs,target_coords,obstacle_coords):
@@ -574,13 +586,13 @@ class ActupAgent():
                         print('damn...')
 
                 self.episode_counter += 1
-                if not obs_raw[-1].reward == target_rewards[target_val]:
-                    reward = -1
-                    err = 'hit beacon by accident (go around)'
-                    bad_end = True
-                else:
-                    err = 'reward - go around'
-                    reward = obs_raw[-1].reward
+                # if not obs_raw[-1].reward == target_rewards[target_val]:
+                #     reward = -1
+                #     err = 'hit beacon by accident (go around)'
+                #     bad_end = True
+                # else:
+                err = 'reward - go around'
+                reward = obs_raw[-1].reward
                 return reward,obs_raw,bad_end,err
 
 
@@ -612,10 +624,10 @@ class ActupAgent():
 
                 err = 'reward'
                 self.cumulative_score += reward
-                if not reward == target_rewards[target_val]:
-                    reward = -1
-                    bad_end = True
-                    err = 'hit wrong beacon by accident (go_around 2)'
+                # if not reward == target_rewards[target_val]:
+                #     reward = -1
+                #     bad_end = True
+                #     err = 'hit wrong beacon by accident (go_around 2)'
                 return reward,obs_raw,bad_end,err
 
 
@@ -777,6 +789,10 @@ class ActupAgent():
             err = 'last'
             print("last caught select beacon 1")
             return -1, obs_raw, True, err
+        if not int(obs_raw[0].step_type):
+            err = 'first'
+            print("first frame caught - last epsidoe ended")
+            return -1, obs_raw, True, err
         # previous_obs = []
         # previous_obs.append(obs_raw.copy())
         print("select beacon target", target_val)
@@ -814,7 +830,7 @@ class ActupAgent():
                 #until the reward comes through
                 noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
                 obs_raw = self.env.step(noop).copy()
-                print('debug...')
+                print('debug... 3')
                 # if obs_raw[0].last():
                 #     print('damn...')
                 # print('debug')
@@ -828,7 +844,7 @@ class ActupAgent():
                     # previous_obs.append(obs_raw.copy())
                     click_screen = self.action_processer.process(self.patrol_screen,point)
                     obs_raw = self.env.step(click_screen).copy()
-                    print('debug...')
+                    print('debug... 4')
                     # if obs_raw[0].last():
                     #     self.cumulative_score = 0
                     #     self.episode_counter += 1
@@ -841,7 +857,7 @@ class ActupAgent():
                 except ValueError:
                     noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
                     obs_raw = self.env.step(noop).copy()
-                    print('debug...')
+                    print('debug... 5')
                     # if obs_raw[0].last():
                     #     print('damn...')
                     # print('debug')
@@ -866,7 +882,7 @@ class ActupAgent():
                 while not obs_raw[0].observation['score_cumulative'][0] == self.cumulative_score:
                     noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
                     obs_raw = self.env.step(noop).copy()
-                    print('debug...')
+                    print('debug... 6')
                     if obs_raw[0].last():
                         print('damn... select beacon 2')
 
@@ -898,7 +914,7 @@ class ActupAgent():
                 while not int(obs_raw[0].reward) == int(reward):
                     noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
                     obs_raw = self.env.step(noop).copy()
-                    print('debug...')
+                    print('debug... 1')
                     if obs_raw[0].last():
                         print('damn...')
                     loops += 1
@@ -921,7 +937,7 @@ class ActupAgent():
         noop = self.action_processer.process(self.noop, np.reshape(np.asarray([0, 0], dtype=int), (1, 2)))
         updated_obs_raw = self.env.step(noop)
         updated_obs = self.obs_processer.process(obs_raw)
-        print('debug...')
+        print('debug... 2')
         print('select beacon done')
         return reward, obs_raw, time_done, err
 
