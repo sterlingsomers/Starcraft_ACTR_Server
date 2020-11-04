@@ -3,8 +3,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-filenames = ['data_1_20.pkl','data_21_40.pkl', 'data_41_60.pkl','data_61_80.pkl','data_81_100.pkl',
-             'data_101_120.pkl','data_121_140.pkl','data_141_160.pkl']#'data_1_10.pkl','data_11_20.pkl','data_21_30.pkl','data_31_40.pkl','data_41_50.pkl']
+filenames = ['data_501_505.pkl']#['data_1_20.pkl','data_21_40.pkl', 'data_41_60.pkl','data_61_80.pkl','data_81_100.pkl',
+            # 'data_101_120.pkl','data_121_140.pkl','data_141_160.pkl']#'data_1_10.pkl','data_11_20.pkl','data_21_30.pkl','data_31_40.pkl','data_41_50.pkl']
 dataframes = []
 for filename in filenames:
     dat = pickle.load(open(filename,'rb'))

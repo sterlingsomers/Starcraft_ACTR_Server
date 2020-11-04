@@ -56,7 +56,7 @@ flags.DEFINE_float('memory_noise', 0.25, 'noise')
 flags.DEFINE_float('memory_mismatch', 1.0, 'mismatch penalty')
 flags.DEFINE_float('memory_threshold', -100.0, 'retrieval threshold')
 #flags.DEFINE_integer('n_participants', 10, 'number of act-r agents')
-flags.DEFINE_list('id_start_end', [181,200], 'id start and end - also defines the number of participants.')
+flags.DEFINE_list('id_start_end', [501,505], 'id start and end - also defines the number of participants.')
 
 FLAGS(sys.argv)
 

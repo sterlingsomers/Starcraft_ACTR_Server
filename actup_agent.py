@@ -347,6 +347,7 @@ class ActupAgent():
         #action = self.memory.retrieve(partial=True,**obs_dict)['action']
         action_salience['action'] = action
         action = round(action)
+        #obs_dict['action'] = action
 
         print(obs_dict)
         if action: #i.e. go around
